@@ -105,3 +105,12 @@ html,body{overflow-x:hidden;max-width:100%}
 .hint{bottom:calc(env(safe-area-inset-bottom) + 178px);font-size:12px;padding:5px 12px}
 #card .ipa span{white-space:nowrap;display:inline-block}
 button,.gbtn,.rplay{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* v5-15: lighter integrated left controls */
+:root{--ctl-top:45dvh}
+.fixbar{width:54px;padding:6px 0 7px;gap:2px;background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid #ebe5d9aa;border-radius:22px;box-shadow:0 1px 0 #fff inset,0 2px 10px #0000000d}
+.fixbar .rplay{width:44px;height:44px;margin-bottom:2px}.fixbar .rplay svg{width:20px;height:20px}
+#prev,#next{width:46px;height:44px;background:transparent;position:relative}
+#prev::before,#next::before{content:'';position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:var(--grey);opacity:.75;z-index:-1}
+#prev,#next{isolation:isolate}#prev svg,#next svg{width:15px;height:15px}
+#prev:active::before,#next:active::before{opacity:1}
+.fixbar .cnt{width:50px;font-size:9.5px;color:var(--mute);opacity:.85;margin-top:2px}.fixbar .cnt b{font-weight:500}
