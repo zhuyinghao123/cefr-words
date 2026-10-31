@@ -77,7 +77,9 @@ function ocrFix(sent,head){if(!DICT||!sent)return sent;const toks=sent.split(/(\
   const idx=W.map((w,i)=>w?i:-1).filter(i=>i>=0);
   for(let n=0;n<idx.length;n++){const i=idx[n],w=W[i],lw=w.toLowerCase();if(lw.length<2||FW.has(lw)||head&&lw.slice(0,4)===head.toLowerCase().slice(0,4))continue;
     const prev=n?W[idx[n-1]].toLowerCase():'',next=n+1<idx.length?W[idx[n+1]].toLowerCase():'';let e=null;for(const k of lemmas(lw)){e=DICT.get(k)||(LEX&&LEX.has(k)?[99999,'']:null);if(e)break}const rk=e?e[0]:1e9;
-    let best=null,bs=0;for(const f of FW){if(f[0]!==lw[0]||Math.abs(f.length-lw.length)>2)continue;const d=lev(lw,f);if(d>2||d>=lw.length/2)continue;
+    const detOK=next&&!FW.has(next)&&next.length>1&&lemmas(next).some(k=>DICT.has(k))&&!DET.has(prev);
+    if(/^th/.test(lw)&&lw!=='the'&&detOK&&rk>1500&&lw.length<=7){let r=/^[A-Z]/.test(w)?'The':'the';toks[i]=toks[i].replace(w,r);W[i]=r;continue}
+    let best=null,bs=0;for(const f of FW){if(/^th/.test(lw)&&DET.has(f))continue;if(f[0]!==lw[0]||Math.abs(f.length-lw.length)>2)continue;const d=lev(lw,f);if(d>2||d>=lw.length/2)continue;
       let sc=0;if(!e)sc=3-d;else if(DET.has(f)){const nx=next&&lemmas(next).some(k=>DICT.has(k));if(next&&!FW.has(next)&&nx&&!DET.has(prev)&&(prev===''||!/^(the|a|an)$/.test(prev)))sc=(rk>1500?2.5:0)-d*.5;}
       let pf=0;while(pf<f.length&&f[pf]===lw[pf])pf++;sc+=pf*.1;if(sc>bs){bs=sc;best=f}}
     if(best&&bs>=1){let r=best;if(/^[A-Z]/.test(w))r=r[0].toUpperCase()+r.slice(1);toks[i]=toks[i].replace(w,r);W[i]=r}}
