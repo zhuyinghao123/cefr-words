@@ -114,3 +114,19 @@ button,.gbtn,.rplay{touch-action:manipulation;-webkit-tap-highlight-color:transp
 #prev,#next{isolation:isolate}#prev svg,#next svg{width:15px;height:15px}
 #prev:active::before,#next:active::before{opacity:1}
 .fixbar .cnt{width:50px;font-size:9.5px;color:var(--mute);opacity:.85;margin-top:2px}.fixbar .cnt b{font-weight:500}
+/* v5-16: no rail — free-floating light-grey circles on the background */
+.fixbar{background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-radius:0;padding:0;gap:6px;width:54px}
+.fixbar .rplay{width:42px;height:42px;margin-bottom:4px;box-shadow:0 2px 6px #c8102e33}
+#prev,#next{width:48px;height:46px}
+#prev::before,#next::before{width:40px!important;height:40px!important;margin:-20px 0 0 -20px!important;opacity:1!important;background:#e8e4db!important;box-shadow:none!important;border:0!important}
+#prev:active::before,#next:active::before{background:#dcd7cc!important}
+#prev svg,#next svg{width:16px;height:16px;color:#6b665d}
+.fixbar .cnt{font-size:9px;opacity:.6;margin-top:0}
+#v-study #card{margin-left:50px}
+/* v5-16b: full-width card, controls float on its left edge */
+#v-study #card{margin-left:-3px!important;margin-right:-3px;box-sizing:border-box}
+.fixbar{left:calc(env(safe-area-inset-left) + 15px)!important;z-index:20}
+#v-study .ex,#v-study .extra{padding-left:64px}
+#prev::before,#next::before{background:#7a705f1a!important}
+#prev:active::before,#next:active::before{background:#7a705f30!important}
+.fixbar .rplay{opacity:.92}

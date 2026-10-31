@@ -47,9 +47,9 @@ const R_CH=f=>/^(in|en|an|ing|eng|ang|un)$/.test(f)?'人':/^(i|ei|ai|e)$/.test(f
 function syl(ini,fin){if(ini==='r')return R_CH(fin);const c=[ini+fin,...(ALT[fin]||[]).map(f=>ini+f)];if(ini==='')c.unshift({i:'yi',u:'wu',in:'yin',ing:'ying',ong:'weng',un:'wen'}[fin]||fin);
   if(ini==='w'&&fin==='ai')c.unshift('wei');if(ini===''&&fin==='e')c.unshift('a');if(ini==='y'){c.unshift('y'+(fin==='i'?'i':fin))}if(ini==='w'&&fin==='u')c.unshift('wu');if(ini==='h'&&fin==='i')c.unshift('xi');if(ini==='k'&&fin==='i')c.unshift('ki','qi');if(ini==='g'&&fin==='i')c.unshift('ji');
   for(const s of c)if(CH[s])return CH[s];return (SOLO[ini]||'')+(CH[fin]||'')}
-const XY_OV={greenhouse:'格林豪斯',deforestation:'迪佛瑞斯泰神','fossil fuel':'佛扫 飞油尔',erosion:'衣肉神',emission:'衣米神',blaze:'布雷兹',dispose:'迪斯波兹',conflagration:'康夫勒格瑞神'};
-function xieyinW(word,ip){const w=(word||'').trim().toLowerCase();if(XY_OV[w])return XY_OV[w];if(!ip)return'';const ps=ip.split(/\s+/).filter(Boolean);return ps.map(xieyin).join(' ')}
-function xieyin(ip){if(!ip)return'';let s=ip.normalize('NFD').replace(/n\u0329/g,'ən').replace(/l\u0329/g,'əl').replace(/m\u0329/g,'əm').replace(/[\u0300-\u036f]/g,'').replace(/[ˈˌ\/\[\]()ʰ‿.ˑ̩ ]/g,'').replace(/ɡ/g,'g').replace(/ɹ/g,'r').replace(/ɛ/g,'e').replace(/ɚ/g,'ər').replace(/ɝ/g,'ɜː');
+const XY_OV={greenhouse:'格林豪斯',deforestation:'迪佛瑞斯泰神','fossil fuel':'佛扫 飞油尔',erosion:'衣肉神',emission:'衣米神',blaze:'布雷兹',dispose:'迪斯波兹',inspection:'因斯拜克申',conflagration:'康夫勒格瑞神'};
+function xieyinW(word,ip){const w=(word||'').trim().toLowerCase();if(Object.prototype.hasOwnProperty.call(XY_OV,w))return XY_OV[w];if(!ip)return'';const ps=ip.split(/\s+/).filter(Boolean);return ps.map(xieyin).join(' ')}
+function xieyin(ip){if(!ip)return'';let s=ip.normalize('NFD').replace(/n\u0329/g,'ən').replace(/l\u0329/g,'əl').replace(/m\u0329/g,'əm').replace(/[\u0300-\u036f]/g,'').replace(/[ˈˌ\/\[\]()ʰ‿.ˑ̩ ]/g,'').replace(/ɡ/g,'g').replace(/s([ptk])(?=[aeiouæʌəɑɒɔʊɜɪr]|$)/g,(m,c)=>'s'+{p:'b',t:'d',k:'g'}[c]).replace(/ɹ/g,'r').replace(/ɛ/g,'e').replace(/ɚ/g,'ər').replace(/ɝ/g,'ɜː');
   const T=[];while(s){const v=VOW.find(x=>s.startsWith(x));if(v){T.push({v});s=s.slice(v.length);continue}const c=CON.find(x=>s.startsWith(x));if(c)T.push({c});s=s.slice(c?c.length:1)}
   let out='';for(let i=0;i<T.length;i++){const t=T[i];
     if(t.c==='r'&&i>0&&T[i-1].c&&T[i+1]&&T[i+1].v)t.c='l';

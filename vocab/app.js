@@ -30,24 +30,38 @@ const sentURL=s=>'https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&c
 const pool=new Map();let unlocked=false,lastLatency=null;const player=new Audio();player.preload='auto';
 function getA(url){let a=pool.get(url);if(!a){a=new Audio();a.preload='auto';a.src=url;a.load();pool.set(url,a)}return a}
 function keepPool(urls){for(const [u,a] of pool)if(!urls.includes(u)){a.removeAttribute('src');a.load();pool.delete(u)}urls.forEach(getA)}
-let voice=null;function pickVoice(){const v=speechSynthesis.getVoices();voice=v.find(x=>/en[-_]GB/.test(x.lang)&&/Daniel|Serena|Google UK|Kate|Arthur/.test(x.name))||v.find(x=>/en[-_]US/.test(x.lang)&&/Samantha|Google|Aria|Jenny|Alex/.test(x.name))||v.find(x=>/en[-_](US|GB)/.test(x.lang))||v.find(x=>/^en/.test(x.lang))}
-if('speechSynthesis'in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
-function tts(t){if(!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=voice?voice.lang:'en-US';if(voice)u.voice=voice;u.rate=.92;speechSynthesis.speak(u);speechSynthesis.resume()}catch(e){}}
-function stopAll(){pool.forEach(a=>{if(!a.paused)a.pause()});if(!player.paused)player.pause();if('speechSynthesis'in window)speechSynthesis.cancel()}
-// returns promise resolving true if media started
-let playSeq=0;function play(url,text){stopAll();const my=++playSeq;const t0=performance.now();const a=getA(url);a.addEventListener('playing',()=>{if(my!==playSeq)a.pause()},{once:true});
-  const mark=x=>{x.addEventListener('playing',()=>{lastLatency=Math.round(performance.now()-t0);window.__lat=lastLatency},{once:true})};
-  if(a.readyState>=2){a.currentTime=0;mark(a);return a.play().then(()=>{unlocked=true;return true}).catch(err=>{if(err&&err.name==='NotAllowedError')throw err;tts(text);cacheAudio([url]);return false})}
-  // not buffered yet: speak immediately, keep loading for next time
-  tts(text);cacheAudio([url]);return Promise.resolve(false)}
-const sayWord=w=>w&&play(wordURL(w.word),w.word);
-const saySent=w=>w&&w.sentence&&play(sentURL(w.sentence),w.sentence);
-// first touch anywhere unlocks media + speech, then reads the current word
+const hasSS='speechSynthesis'in window;window.__log=[];const LOG=(seq,k,e)=>{__log.push({seq,k,e,t:Math.round(performance.now())});if(__log.length>300)__log.shift()};
+let voice=null,voicePicked=false;function pickVoice(){if(voicePicked)return;const v=speechSynthesis.getVoices();if(!v.length)return;voice=v.find(x=>/en[-_]US/.test(x.lang)&&/Samantha|Google|Aria|Jenny|Alex/.test(x.name))||v.find(x=>/en[-_]GB/.test(x.lang)&&/Daniel|Serena|Google UK|Kate|Arthur/.test(x.name))||v.find(x=>/en[-_](US|GB)/.test(x.lang))||v.find(x=>/^en/.test(x.lang))||null;voicePicked=true}
+if(hasSS){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+// speech fallback: global utterance ref, cancel + 80ms gap when busy, onstart watchdog 700ms with one retry
+let curU=null,ttsT=0,ttsWd=0;
+function tts(t,my){if(!hasSS||!t)return;clearTimeout(ttsT);clearTimeout(ttsWd);let busy=false;try{busy=speechSynthesis.speaking||speechSynthesis.pending;speechSynthesis.cancel()}catch(e){}
+  const go=retry=>{if(my!==undefined&&my!==playSeq)return;try{pickVoice();const u=new SpeechSynthesisUtterance(t);u.lang=voice?voice.lang:'en-US';if(voice)u.voice=voice;u.rate=.9;curU=u;let st=false;
+    u.onstart=()=>{st=true;LOG(my,'tts','start')};u.onend=()=>{LOG(my,'tts','end');if(curU===u)curU=null};u.onerror=e=>LOG(my,'tts','err:'+(e&&e.error));
+    speechSynthesis.speak(u);speechSynthesis.resume();
+    ttsWd=setTimeout(()=>{if(!st&&curU===u&&!retry&&(my===undefined||my===playSeq)){LOG(my,'tts','retry');try{speechSynthesis.cancel()}catch(e){}setTimeout(()=>go(true),80)}},700)}catch(e){}};
+  if(busy)ttsT=setTimeout(()=>go(false),80);else go(false)}
+function stopAll(){clearTimeout(ttsT);clearTimeout(ttsWd);pool.forEach(a=>{if(!a.paused)a.pause()});if(!player.paused)player.pause();if(hasSS)try{speechSynthesis.cancel()}catch(e){}curU=null}
+// primary: youdao mp3 (reachable in China) once canplaythrough; if not ready within 300ms -> speech
+const AUD_WAIT=300;let playSeq=0;
+function play(url,text){stopAll();const my=++playSeq;const t0=performance.now();const a=getA(url);LOG(my,'req',text);
+  const start=()=>{if(my!==playSeq)return Promise.resolve(false);try{a.currentTime=0}catch(e){}
+    a.addEventListener('playing',()=>{if(my!==playSeq){a.pause();return}lastLatency=Math.round(performance.now()-t0);window.__lat=lastLatency;LOG(my,'aud','playing')},{once:true});
+    a.addEventListener('ended',()=>LOG(my,'aud','ended'),{once:true});
+    return a.play().then(()=>{unlocked=true;return true}).catch(err=>{if(err&&err.name==='NotAllowedError')throw err;if(my===playSeq)tts(text,my);return false})};
+  if(a.readyState>=4)return start();
+  cacheAudio([url]);
+  return new Promise((res,rej)=>{let done=false;const on=()=>{if(done)return;done=true;clearTimeout(tm);start().then(res,rej)};a.addEventListener('canplaythrough',on,{once:true});
+    const tm=setTimeout(()=>{if(done)return;done=true;a.removeEventListener('canplaythrough',on);LOG(my,'aud','timeout->tts');if(my===playSeq)tts(text,my);res(false)},AUD_WAIT)})}
+const sayWord=w=>w?play(wordURL(w.word),w.word).catch(()=>false):Promise.resolve(false);
+const saySent=w=>w&&w.sentence&&play(sentURL(w.sentence),w.sentence).catch(()=>false);
+// first touch anywhere unlocks media + speech (silent utterance), then reads the current word
 function unlockAll(){if(unlocked)return;unlocked=true;$('#hint').style.display='none';
   pool.forEach(a=>{a.muted=true;const p=a.play();p&&p.then(()=>{a.pause();a.currentTime=0;a.muted=false}).catch(()=>{a.muted=false})});
   try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}
   setTimeout(()=>{if(view==='study')sayWord(curWord())},60)}
 ['touchend','pointerup','keydown'].forEach(ev=>document.addEventListener(ev,unlockAll,{capture:true,once:false}));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(view==='study'&&unlocked)setTimeout(()=>sayWord(curWord()),150)}else stopAll()});
 // pre-download all audio into Cache Storage (served offline by sw.js)
 let dlRunning=false;const dlQueue=new Set();
 async function cacheAudio(urls){urls.forEach(u=>dlQueue.add(u));if(dlRunning||!('caches'in window))return;dlRunning=true;const c=await caches.open('vocab-audio');
@@ -185,7 +199,7 @@ function editorHTML(w){return `<div class="two"><input class="w" data-k="word" p
 function bindEditor(d,w,live){d.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{w[i.dataset.k]=i.value;if(i.dataset.k==='word'){d.querySelector('[data-lv]').innerHTML=lvBadge(w,'tag')}if(i.dataset.k==='sentence')w.filled=false;if(live)save()})}
 // ================= enrichment helpers =================
 async function lite(w,force){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip&&(force||!w.ipaUK&&!w.ipaUS)){w.ipaUK=ip.uk;w.ipaUS=ip.us}
-  if(!w.hint||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=5}
+  if(!w.hint||/[A-Za-z]/.test(w.hint)||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=6}
 // ================= photo import =================
 let shots=[];
 $('#pickBtn').onclick=()=>$('#pick').click();$('#shootBtn').onclick=()=>$('#shoot').click();
@@ -287,16 +301,16 @@ function fixData(){S.lib=Array.isArray(S.lib)?S.lib:[];const L=S.cats.filter(c=>
   const seen=new Set(),key=w=>w.id||w;const ord=[...S.cats.filter(c=>!c.parent).flatMap(p=>[p,...S.cats.filter(k=>k.parent===p.id)]),...S.cats.filter(c=>c.parent&&!S.cats.some(p=>p.id===c.parent))];
   ord.forEach(c=>{c.words=c.words.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true})});S.lib=S.lib.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true});
   const sw=new Set(),dk=w=>{const k=wkey(w);if(!k)return true;if(sw.has(k))return false;sw.add(k);return true};ord.forEach(c=>c.words=c.words.filter(dk));S.lib=S.lib.filter(dk);save()}
-function migrate(){const old=allWords().filter(w=>!w.v||w.v<5);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
+function migrate(){const old=allWords().filter(w=>!w.v||w.v<6||/[A-Za-z]/.test(w.hint||''));if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
   let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.status=w.status||'new';w.ocrIpa=w.ipa;need.push(w)}}));
   if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
 // ================= boot =================
 (async()=>{try{const d=await idbGet('kv','state');if(d&&Array.isArray(d.cats))S=d}catch(e){}
   fixData();
-  if(S.cur!=='__all'&&!cat(S.cur))S.cur='__all';migrate();renderStudy(false);
-  // try autoplay on startup
-  const w=curWord();if(w){const a=getA(wordURL(w.word));const tryPlay=()=>a.play().then(()=>{unlocked=true}).catch(err=>{if(err&&err.name==='NotAllowedError'){$('#hint').style.display='block'}else tts(w.word)});
-    if(a.readyState>=2)tryPlay();else{a.addEventListener('canplay',()=>{if(!unlocked)tryPlay()},{once:true});setTimeout(()=>{if(!unlocked&&a.readyState<2)$('#hint').style.display='block'},1500)}}
+  if(S.cur!=='__all'&&!cat(S.cur))S.cur='__all';renderStudy(false);window.__firstCard=Math.round(performance.now());
+  // heavy work after first paint
+  requestAnimationFrame(()=>setTimeout(migrate,50));
+  const w=curWord();if(w)sayWord(w).then(ok=>{if(!ok&&!unlocked)setTimeout(()=>{if(!unlocked)$('#hint').style.display='block'},1200)});
   setTimeout(prefetchAll,800);hashImport()})();
 // ================= service worker auto-update =================
 if('serviceWorker'in navigator){const had=!!navigator.serviceWorker.controller;let reloading=false;
@@ -312,7 +326,7 @@ V.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[
 
 // fit study card: word on one line, whole card above the 还不会/记住了 bar, no inner scroll
 let fitting=false;function fitCard(){const C=$('#card'),A=document.querySelector('#v-study .acts');if(!C||fitting||view!=='study')return;fitting=true;
-  const W=C.querySelector('.word'),T=C.querySelector('.wt');C.style.zoom='';C.style.marginLeft='';if(W&&T){W.style.fontSize='';let f=parseFloat(getComputedStyle(W).fontSize);const H=W.parentElement,cs=getComputedStyle(H),lv=W.querySelector('.lv');const over=()=>{const hb=H.getBoundingClientRect(),L=hb.left+parseFloat(cs.paddingLeft),Rr=hb.right-parseFloat(cs.paddingRight);const t=T.getBoundingClientRect(),r=lv?Math.max(t.right,lv.getBoundingClientRect().right):t.right;return t.left<L-0.5||r>Rr+0.5||(lv&&lv.getBoundingClientRect().top>t.top+t.height*.5)};while(f>18&&over()){f-=1;W.style.fontSize=f+'px'}}
-  const lim=(A?A.getBoundingClientRect().top:innerHeight)-8;let z=1;while(z>.62&&C.getBoundingClientRect().bottom>lim){z-=.04;C.style.zoom=z;C.style.marginLeft=(62/z)+'px'}fitting=false}
+  const W=C.querySelector('.word'),T=C.querySelector('.wt');C.style.zoom='';C.style.marginLeft='';C.style.minHeight='';if(W&&T){W.style.fontSize='';let f=parseFloat(getComputedStyle(W).fontSize);const H=W.parentElement,cs=getComputedStyle(H),lv=W.querySelector('.lv');const over=()=>{const hb=H.getBoundingClientRect(),L=hb.left+parseFloat(cs.paddingLeft),Rr=hb.right-parseFloat(cs.paddingRight);const t=T.getBoundingClientRect(),r=lv?Math.max(t.right,lv.getBoundingClientRect().right):t.right;return t.left<L-0.5||r>Rr+0.5||(lv&&lv.getBoundingClientRect().top>t.top+t.height*.5)};while(f>18&&over()){f-=1;W.style.fontSize=f+'px'}}
+  const lim=(A?A.getBoundingClientRect().top:innerHeight)-8;let z=1;while(z>.62&&C.getBoundingClientRect().bottom>lim){z-=.04;C.style.zoom=z;C.style.marginLeft=(-3/z)+'px'}if(z===1){const cb=C.getBoundingClientRect();if(cb.bottom<lim-2)C.style.minHeight=Math.floor(lim-cb.top)+'px'}fitting=false}
 addEventListener('resize',()=>requestAnimationFrame(fitCard));
 try{new ResizeObserver(()=>requestAnimationFrame(fitCard)).observe($('#card'))}catch(_){}
