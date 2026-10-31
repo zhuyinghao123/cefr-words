@@ -1,0 +1,192 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8b1e1e"><link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>拍照词库</title>
+<style>
+:root{--bg:#f6efe1;--card:#fffdf7;--red:#8b1e1e;--ink:#2b2420;--mute:#8a7f72}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif;min-height:100vh}
+header{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;position:sticky;top:0;background:var(--bg);z-index:5}
+header h1{flex:1;font-size:17px;margin:0;color:var(--red);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;border:0;border-radius:10px;background:#efe4cf;color:var(--ink);padding:8px 12px}
+button.p{background:var(--red);color:#fff}.ok{font-size:22px;background:var(--red);color:#fff;width:44px;height:44px;border-radius:50%}
+.screen{display:none;padding:0 14px 120px}.screen.on{display:block}
+.card{background:var(--card);border-radius:22px;box-shadow:0 6px 24px #0000001a;padding:30px 24px;margin:18px 0;min-height:52vh}
+.word{font-family:Georgia,"Times New Roman",serif;font-size:46px;font-weight:700;margin:0;word-break:break-word}
+.ipa{color:var(--mute);font-size:18px;margin:6px 0 14px}.mean{font-size:19px}.mean b{color:var(--red);margin-right:6px}
+.pill{display:inline-block;background:#f3dede;color:var(--red);border-radius:999px;padding:3px 12px;font-size:14px;margin-top:10px}
+.sent{font-family:Georgia,serif;font-size:19px;line-height:1.55;margin-top:24px;border-top:1px dashed #ddd2bf;padding-top:18px}
+.sent em{color:#c0262d;font-style:normal;font-weight:700}.trans{color:var(--mute);margin-top:8px;font-size:16px}
+.count{text-align:center;color:var(--mute);margin-top:8px}
+.ctrl{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:12px;padding:12px 16px calc(env(safe-area-inset-bottom) + 16px);background:linear-gradient(transparent,var(--bg) 30%)}
+.ctrl button{width:62px;height:62px;border-radius:50%;font-size:24px;background:var(--card);box-shadow:0 3px 10px #0002}
+.ctrl .nav{background:var(--red);color:#fff}.ctrl .sp{margin-left:auto}
+.row{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:10px;margin:8px 0}
+.row .t{flex:1;min-width:0}.row.child{margin-left:26px}.row.sel{outline:2px solid var(--red)}
+.row small{color:var(--mute)}.mini{padding:4px 9px;font-size:13px}
+.ed{background:var(--card);border-radius:14px;padding:10px;margin:10px 0;display:flex;gap:8px}
+.ed input,.ed textarea,.f input,.f textarea,.f select{width:100%;font:inherit;border:1px solid #e2d6c1;border-radius:8px;padding:6px;margin:2px 0;background:#fff}
+.ed textarea{min-height:46px}.ed .chk{width:26px;height:26px;flex:none;accent-color:var(--red)}
+.f label{display:block;margin-top:8px;color:var(--mute);font-size:14px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.muted{color:var(--mute);font-size:14px}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:10px;display:none;z-index:9}
+.drag{cursor:grab;touch-action:none;padding:0 4px;color:var(--mute)}
+</style></head><body>
+<header><button id="back" style="display:none">‹</button><h1 id="title">拍照词库</h1><span id="hbtn"></span></header>
+<div id="toast"></div>
+
+<section class="screen on" id="study">
+  <div class="card" id="card"></div><div class="count" id="count"></div>
+  <div class="ctrl"><button id="spW" title="读单词">🔊</button><button class="nav" id="prev">◀</button><button class="nav" id="next">▶</button><button class="sp" id="spS" title="读例句">💬</button></div>
+</section>
+
+<section class="screen" id="lib">
+  <div class="bar"><button class="p" id="addParent">＋ 大类</button><button id="photoBtn">📷 拍照导入</button><button id="manualBtn">✍️ 手动添加</button></div>
+  <div id="catList"></div>
+  <div class="bar"><button id="backupBtn">⬇️ 备份</button><button id="restoreBtn">⬆️ 恢复</button></div>
+  <p class="muted">点分类名学习；⋯ 管理单词。大类数量 = 自身单词 + 所有子类单词。</p>
+  <input type="file" id="photo" accept="image/*" hidden><input type="file" id="restoreFile" accept="application/json,.json" hidden>
+</section>
+
+<section class="screen" id="confirm"><p class="muted" id="ocrStatus"></p>
+  <div class="f"><label>导入到分类</label><select id="confCat"></select></div>
+  <div class="bar"><button id="selAll">全选/全不选</button></div><div id="confList"></div></section>
+
+<section class="screen" id="manual"><div class="f">
+  <label>分类</label><select id="mCat"></select>
+  <label>单词</label><input id="mWord"><label>音标</label><input id="mIpa">
+  <label>词性 + 中文释义</label><input id="mMean" placeholder="n. 植物"><label>谐音（可选）</label><input id="mHint">
+  <label>例句</label><textarea id="mSent"></textarea><label>例句翻译</label><textarea id="mTrans"></textarea>
+  <div class="bar"><button id="mTr">自动翻译</button></div></div></section>
+
+<section class="screen" id="words"><div class="bar"><button id="wDelMode">选择删除</button><button id="wEditMode">编辑</button></div><div id="wList"></div></section>
+
+<script src="parse.js"></script>
+<script>
+const $=s=>document.querySelector(s),uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2200)}
+// ---------- IndexedDB ----------
+let S={cats:[],cur:null,idx:0};
+const dbp=new Promise((ok,no)=>{const r=indexedDB.open('vocabdb',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+async function dbGet(){const db=await dbp;return new Promise(ok=>{const q=db.transaction('kv').objectStore('kv').get('state');q.onsuccess=()=>ok(q.result);q.onerror=()=>ok(null)})}
+async function save(){const db=await dbp;db.transaction('kv','readwrite').objectStore('kv').put(JSON.parse(JSON.stringify(S)),'state')}
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+// ---------- model ----------
+const cat=id=>S.cats.find(c=>c.id===id),kids=id=>S.cats.filter(c=>c.parent===id);
+const count=c=>c.words.length+(c.parent?0:kids(c.id).reduce((a,k)=>a+k.words.length,0));
+const studyWords=()=>{const c=cat(S.cur);if(!c)return[];return c.parent?c.words:[...c.words,...kids(c.id).flatMap(k=>k.words)]};
+function ordered(){const r=[];S.cats.filter(c=>!c.parent).forEach(p=>{r.push(p);kids(p.id).forEach(k=>r.push(k))});return r}
+function newCat(name,parent=null){const c={id:uid(),name,parent,words:[]};S.cats.push(c);return c}
+// ---------- speech ----------
+let voice=null,unlocked=false,pendingSpeak=null;
+function pickVoice(){const v=speechSynthesis.getVoices();voice=v.find(x=>x.lang==='en-US'&&/Samantha|Google|Aria|Jenny/.test(x.name))||v.find(x=>x.lang==='en-US')||v.find(x=>/^en/.test(x.lang))}
+if('speechSynthesis'in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function speak(t){if(!t||!('speechSynthesis'in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-US';if(voice)u.voice=voice;u.rate=.9;
+  let started=false;u.onstart=()=>{started=true;unlocked=true};speechSynthesis.speak(u);
+  if(!unlocked)setTimeout(()=>{if(!started){speechSynthesis.cancel();pendingSpeak=t}},700)}
+document.addEventListener('pointerdown',()=>{if(pendingSpeak){const t=pendingSpeak;pendingSpeak=null;unlocked=true;speak(t)}},{capture:true});
+// ---------- screens ----------
+let stack=['study'];
+function show(id,push=true){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));if(push&&stack.at(-1)!==id)stack.push(id);$('#back').style.display=stack.length>1?'':'none';renderHeader(id)}
+$('#back').onclick=()=>{stack.pop();const id=stack.at(-1)||'study';show(id,false);if(id==='lib')renderLib();if(id==='study')renderStudy(true)};
+function renderHeader(id){const h=$('#hbtn');h.innerHTML='';const T=$('#title');
+  if(id==='study'){const c=cat(S.cur);T.textContent=c?c.name:'拍照词库';h.innerHTML='<button id="libBtn">📚 词库</button>';$('#libBtn').onclick=()=>{renderLib();show('lib')}}
+  else if(id==='lib')T.textContent='词库与分类';
+  else if(id==='confirm'){T.textContent='确认导入';h.innerHTML='<button class="ok" id="confOk">✓</button>';$('#confOk').onclick=doImport}
+  else if(id==='manual'){T.textContent='手动添加';h.innerHTML='<button class="ok" id="mOk">✓</button>';$('#mOk').onclick=manualSave}
+  else if(id==='words'){T.textContent=(cat(wCat)||{}).name||'单词';if(wMode){h.innerHTML='<button class="ok" id="wOk">✓</button>';$('#wOk').onclick=wFinish}}}
+// ---------- study ----------
+function hl(sent,word){if(!sent)return'';const stem=word.replace(/(e|y|ion|ation)$/,'');const re=new RegExp('\\b('+stem.replace(/[-]/g,'\\-')+'[a-z]*)','gi');return esc(sent).replace(re,'<em>$1</em>')}
+function renderStudy(speakIt){const ws=studyWords();renderHeader('study');
+  if(!ws.length){$('#card').innerHTML='<p class="muted" style="text-align:center;margin-top:30%">还没有单词<br><br>点右上角「📚 词库」拍照或手动导入</p>';$('#count').textContent='';return}
+  if(S.idx>=ws.length)S.idx=0;const w=ws[S.idx];
+  $('#card').innerHTML=`<p class="word">${esc(w.word)}</p><div class="ipa">${esc(w.ipa)}</div><div class="mean"><b>${esc(w.pos)}</b>${esc(w.meaning)}</div>${w.hint?`<span class="pill">谐音 ${esc(w.hint)}</span>`:''}
+  <div class="sent">${hl(w.sentence,w.word)}</div><div class="trans">${esc(w.trans)}</div>`;
+  $('#count').textContent=(S.idx+1)+'/'+ws.length;if(speakIt)speak(w.word)}
+function step(d){const n=studyWords().length;if(!n)return;S.idx=(S.idx+d+n)%n;save();renderStudy(true)}
+$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#spW').onclick=()=>{const w=studyWords()[S.idx];w&&speak(w.word)};$('#spS').onclick=()=>{const w=studyWords()[S.idx];w&&speak(w.sentence)};
+// ---------- library ----------
+function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered();
+  if(!all.length)L.innerHTML='<p class="muted">先建一个大类吧</p>';
+  all.forEach(c=>{const d=document.createElement('div');d.className='row'+(c.parent?' child':'')+(c.id===S.cur?' sel':'');d.dataset.id=c.id;
+    d.innerHTML=`<span class="drag">☰</span><div class="t"><b>${esc(c.name)}</b> <small>${count(c)} 词</small></div>
+    <button class="mini" data-a="up">↑</button><button class="mini" data-a="dn">↓</button>${c.parent?'':'<button class="mini" data-a="sub">＋子类</button>'}<button class="mini" data-a="more">⋯</button>`;
+    d.querySelector('.t').onclick=()=>{S.cur=c.id;S.idx=0;save();stack=['study'];show('study',false);renderStudy(true)};
+    d.querySelectorAll('button').forEach(b=>b.onclick=()=>catAct(c,b.dataset.a));L.appendChild(d)});
+  enableDrag(L,'.row',(from,to)=>{const a=cat(from),b=cat(to);if(!a||!b||(a.parent||null)!==(b.parent||null))return toast('只能在同级内拖动');moveIn(S.cats,a,S.cats.indexOf(b));save();renderLib()})}
+function moveIn(arr,item,ni){arr.splice(arr.indexOf(item),1);arr.splice(ni,0,item)}
+function catAct(c,a){
+  if(a==='up'||a==='dn'){const sib=S.cats.filter(x=>(x.parent||null)===(c.parent||null));const i=sib.indexOf(c),j=i+(a==='up'?-1:1);if(j<0||j>=sib.length)return;moveIn(S.cats,c,S.cats.indexOf(sib[j]));save();renderLib()}
+  else if(a==='sub'){const n=prompt('子类名称');if(n){newCat(n.trim(),c.id);save();renderLib()}}
+  else if(a==='more'){const o=prompt('输入数字：1 管理单词  2 重命名  3 删除分类','1');
+    if(o==='1')openWords(c.id);else if(o==='2'){const n=prompt('新名称',c.name);if(n){c.name=n;save();renderLib()}}
+    else if(o==='3'&&confirm(`删除「${c.name}」及其${c.parent?'':'子类和'}全部单词？`)){const ids=[c.id,...kids(c.id).map(k=>k.id)];S.cats=S.cats.filter(x=>!ids.includes(x.id));if(ids.includes(S.cur))S.cur=null;save();renderLib()}}}
+$('#addParent').onclick=()=>{const n=prompt('大类名称');if(n){const c=newCat(n.trim());if(!S.cur)S.cur=c.id;save();renderLib()}};
+function catOptions(sel){const all=ordered();sel.innerHTML=all.map(c=>`<option value="${c.id}">${c.parent?'　└ ':''}${esc(c.name)}</option>`).join('');if(S.cur)sel.value=S.cur}
+function ensureCat(){if(!S.cats.length){const c=newCat('默认');S.cur=c.id}}
+// drag (pointer events, works on touch)
+function enableDrag(list,sel,done){list.querySelectorAll('.drag').forEach(h=>{h.onpointerdown=e=>{const row=h.closest(sel);row.style.opacity=.5;h.setPointerCapture(e.pointerId);
+  h.onpointerup=ev=>{row.style.opacity='';h.onpointerup=null;const el=document.elementFromPoint(ev.clientX,ev.clientY);const t=el&&el.closest(sel);if(t&&t!==row)done(row.dataset.id,t.dataset.id)}}})}
+// ---------- words screen ----------
+let wCat=null,wMode=null,wSel=new Set();
+function openWords(id){wCat=id;wMode=null;wSel.clear();renderWords();show('words')}
+function renderWords(){const c=cat(wCat);if(!c)return;const L=$('#wList');L.innerHTML=c.words.length?'':'<p class="muted">这个分类没有单词（子类单词请在子类里管理）</p>';
+  c.words.forEach((w,i)=>{const d=document.createElement('div');d.className='row'+(wSel.has(w.id)?' sel':'');d.dataset.id=w.id;
+    if(wMode==='edit'){d.className='ed';d.innerHTML=editorHTML(w,false);L.appendChild(d);bindEditor(d,w);return}
+    d.innerHTML=`${wMode==='del'?`<input type="checkbox" class="chk" ${wSel.has(w.id)?'checked':''}>`:'<span class="drag">☰</span>'}<div class="t"><b>${esc(w.word)}</b> <small>${esc(w.pos)} ${esc(w.meaning)}</small></div>${wMode?'':'<button class="mini" data-a="-1">↑</button><button class="mini" data-a="1">↓</button>'}`;
+    if(wMode==='del')d.onclick=()=>{wSel.has(w.id)?wSel.delete(w.id):wSel.add(w.id);renderWords()};
+    d.querySelectorAll('button').forEach(b=>b.onclick=()=>{const j=i+ +b.dataset.a;if(j<0||j>=c.words.length)return;moveIn(c.words,w,j);save();renderWords()});L.appendChild(d)});
+  if(!wMode)enableDrag(L,'.row',(f,t)=>{const a=c.words.find(x=>x.id===f),b=c.words.find(x=>x.id===t);moveIn(c.words,a,c.words.indexOf(b));save();renderWords()});
+  renderHeader('words')}
+$('#wDelMode').onclick=()=>{wMode=wMode==='del'?null:'del';wSel.clear();renderWords()};
+$('#wEditMode').onclick=()=>{wMode=wMode==='edit'?null:'edit';renderWords()};
+function wFinish(){const c=cat(wCat);if(wMode==='del'&&wSel.size){if(!confirm(`删除 ${wSel.size} 个单词？`))return;c.words=c.words.filter(w=>!wSel.has(w.id))}wMode=null;wSel.clear();save();renderWords();toast('已保存')}
+// ---------- editor (shared) ----------
+const F=[['word','单词'],['ipa','音标'],['pos','词性'],['meaning','中文释义'],['hint','谐音（可选）'],['sentence','例句'],['trans','例句翻译']];
+function editorHTML(w,chk){return (chk?`<input type="checkbox" class="chk" ${w._sel?'checked':''}>`:'')+'<div style="flex:1">'+F.map(([k,l])=>k==='sentence'||k==='trans'?`<textarea data-k="${k}" placeholder="${l}">${esc(w[k])}</textarea>`:`<input data-k="${k}" placeholder="${l}" value="${esc(w[k])}">`).join('')+(chk?'<button class="mini" data-tr>重新翻译</button>':'')+'</div>'}
+function bindEditor(d,w){d.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{w[i.dataset.k]=i.value;if(!pending)save()});const c=d.querySelector('.chk');if(c)c.onchange=()=>w._sel=c.checked;
+  const tb=d.querySelector('[data-tr]');if(tb)tb.onclick=async()=>{tb.textContent='翻译中…';w.trans=await translate(w.sentence)||w.trans;d.querySelector('[data-k=trans]').value=w.trans;tb.textContent='重新翻译'}}
+// ---------- translation ----------
+async function translate(t){if(!t)return'';try{const r=await fetch('https://api.mymemory.translated.net/get?langpair=en|zh-CN&q='+encodeURIComponent(t.slice(0,480)));const j=await r.json();
+  const s=j&&j.responseData&&j.responseData.translatedText;if(!s||/MYMEMORY WARNING|INVALID|QUERY LENGTH/i.test(s)||j.responseStatus>=400)throw 0;return s}catch(e){return''}}
+// ---------- photo import ----------
+let pending=null;
+$('#photoBtn').onclick=()=>$('#photo').click();
+$('#photo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;ensureCat();pending=[];catOptions($('#confCat'));$('#confList').innerHTML='';show('confirm');
+  const st=$('#ocrStatus');st.textContent='正在加载识别引擎（首次需下载约 20MB）…';
+  try{if(!window.Tesseract)await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+    const img=await prep(f);const wk=await Tesseract.createWorker(['eng','chi_sim'],1,{logger:m=>{if(m.status)st.textContent=`${({'recognizing text':'识别中','loading language traineddata':'下载语言包'})[m.status]||m.status} ${Math.round((m.progress||0)*100)}%`}});
+    const r=await wk.recognize(img);await wk.terminate();
+    const lines=r.data.lines.map(l=>({t:l.text,c:l.confidence}));pending=parseOCR(lines).map(w=>({...w,id:uid(),_sel:true}));
+    if(!pending.length){st.textContent='没有识别出词条，可改用手动添加，或拍得更正、更清晰一些。';return}
+    st.textContent=`识别到 ${pending.length} 个词条，正在翻译例句…`;renderConf();
+    for(const w of pending){if(w.sentence&&!w.trans){w.trans=await translate(w.sentence);renderConf()}}
+    const miss=pending.filter(w=>w.sentence&&!w.trans).length;
+    st.textContent=`识别到 ${pending.length} 个词条。请核对修改，勾选要导入的单词，点右上角 ✓ 完成。`+(miss?`（${miss} 条翻译失败，可手动填写或点「重新翻译」）`:'');
+  }catch(err){st.textContent='识别失败：'+(err&&err.message||err)+'。请检查网络后重试，或使用手动添加。'}};
+async function prep(f){const bmp=await createImageBitmap(f);const k=Math.min(1,2200/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=bmp.width*k;c.height=bmp.height*k;
+  const x=c.getContext('2d');x.filter='grayscale(1) contrast(1.3)';x.drawImage(bmp,0,0,c.width,c.height);return c}
+function renderConf(){const L=$('#confList');L.innerHTML='';(pending||[]).forEach(w=>{const d=document.createElement('div');d.className='ed';d.innerHTML=editorHTML(w,true);L.appendChild(d);bindEditor(d,w)})}
+$('#selAll').onclick=()=>{const v=!(pending||[]).every(w=>w._sel);(pending||[]).forEach(w=>w._sel=v);renderConf()};
+function doImport(){const c=cat($('#confCat').value);const sel=(pending||[]).filter(w=>w._sel&&w.word.trim());if(!c||!sel.length)return toast('请至少勾选一个单词');
+  sel.forEach(w=>{const{_sel,...x}=w;c.words.push(x)});pending=null;S.cur=c.id;save();toast(`已导入 ${sel.length} 个单词`);stack=['study','lib'];renderLib();show('lib',false)}
+// ---------- manual ----------
+$('#manualBtn').onclick=()=>{ensureCat();catOptions($('#mCat'));['mWord','mIpa','mMean','mHint','mSent','mTrans'].forEach(i=>$('#'+i).value='');show('manual')};
+$('#mTr').onclick=async()=>{const b=$('#mTr');b.textContent='翻译中…';const t=await translate($('#mSent').value);if(t)$('#mTrans').value=t;else toast('翻译失败，请手动填写');b.textContent='自动翻译'};
+function manualSave(){const word=$('#mWord').value.trim();if(!word)return toast('请输入单词');const m=$('#mMean').value.trim().match(/^([a-z]+\.)?\s*(.*)$/i);
+  cat($('#mCat').value).words.push({id:uid(),word,ipa:$('#mIpa').value.trim(),pos:m[1]||'',meaning:m[2],hint:$('#mHint').value.trim(),sentence:$('#mSent').value.trim(),trans:$('#mTrans').value.trim()});
+  save();toast('已添加');$('#mWord').value=$('#mIpa').value=$('#mMean').value=$('#mHint').value=$('#mSent').value=$('#mTrans').value=''}
+// ---------- backup ----------
+$('#backupBtn').onclick=()=>{const b=new Blob([JSON.stringify({app:'paizhaociku',v:1,date:new Date().toISOString(),data:S},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='拍照词库备份-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)};
+$('#restoreBtn').onclick=()=>$('#restoreFile').click();
+$('#restoreFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());const d=j.data||j;if(!Array.isArray(d.cats))throw 0;
+  if(!confirm('恢复会覆盖当前全部数据，确定？'))return;S=d;await save();renderLib();toast('恢复成功')}catch(_){toast('文件格式不正确')}};
+// ---------- boot ----------
+(async()=>{const d=await dbGet();if(d&&d.cats)S=d;
+  if(!S.cats.length){const c=newCat('雅思核心词汇');c.words.push({id:uid(),word:'vegetation',ipa:"[ˌvedʒɪ(ə)ˈteɪʃən]",pos:'n.',meaning:'[总称]植物',hint:'',sentence:'The vegetation in tropical forests is very dense.',trans:'热带森林的植被非常茂密。'});S.cur=c.id;save()}
+  if(!cat(S.cur))S.cur=(S.cats[0]||{}).id;renderStudy(true)})();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js',{scope:'./'});
+</script></body></html>
