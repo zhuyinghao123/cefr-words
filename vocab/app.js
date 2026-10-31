@@ -215,17 +215,24 @@ $('#runOcr').onclick=async()=>{if(!shots.length||importing)return;importing=true
   finally{importing=false;if(tessW){tessW.terminate().catch(()=>{});tessW=null}}};
 
 // ================= import by link / code =================
-function b64uDec(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const bin=atob(s);return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))}
-function parseImport(txt){txt=String(txt||'').trim();if(!txt)throw new Error('内容为空');let d=txt;const m=txt.match(/#import=([^\s]+)/);if(m)d=m[1];d=decodeURIComponent(d).replace(/^PZCK1[:：]/,'').trim();
-  let arr;if(/^[\[{]/.test(d))arr=JSON.parse(d);else arr=JSON.parse(b64uDec(d));if(!Array.isArray(arr))arr=arr.entries||arr.words||[];
-  const out=arr.filter(x=>x&&x.word&&String(x.word).trim()).map(x=>({word:String(x.word).trim(),pos:x.pos||'',meaning:x.meaning_zh||x.meaning||'',sentence:x.sentence_en||x.sentence||'',trans:x.sentence_zh||x.trans||'',hint:'',extra:'',filled:false}));
+function b64uDec(s){s=s.replace(/[^A-Za-z0-9+/_-]/g,'').replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';if(s.length%4===1)s=s.slice(0,-1);
+  const bin=atob(s);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new TextDecoder('utf-8',{fatal:false}).decode(u)}
+function cleanTxt(t){return String(t||'').normalize('NFKC').replace(/[\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2064\uFEFF\u00AD]/g,'').trim()}
+function mapItems(arr){if(!Array.isArray(arr))arr=arr.entries||arr.words||[];
+  const out=arr.filter(x=>x&&x.word&&String(x.word).trim()).map(x=>({word:String(x.word).trim(),pos:x.pos||'',meaning:x.meaning_zh||x.meaning||'',sentence:x.sentence_en||x.sentence||'',trans:x.sentence_zh||x.trans||'',hint:'',extra:'',filled:false,src:'import'}));
   if(!out.length)throw new Error('没有找到单词');return out}
+const PACK_RE=/^(?:PZ[:：]\s*)?([A-Za-z0-9_-]{1,32})$/i;
+async function fetchPack(id){const r=await fetch('packs/'+encodeURIComponent(id.toLowerCase())+'.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(`找不到词包「${id}」`);return mapItems(await r.json())}
+async function parseImport(txt){txt=cleanTxt(txt);if(!txt)throw new Error('内容为空');
+  const pk=txt.replace(/\s+/g,'').match(PACK_RE);if(pk&&!/^PZCK1/i.test(txt)&&txt.replace(/\s+/g,'').length<=35)return fetchPack(pk[1]);
+  let d=txt;const m=txt.match(/#import=([\s\S]+)/);if(m)d=m[1];try{d=decodeURIComponent(d)}catch(e){}d=d.replace(/^\s*PZCK1\s*[:：]?/i,'').trim();
+  if(/^[\[{]/.test(d))return mapItems(JSON.parse(d));let j;try{j=JSON.parse(b64uDec(d))}catch(e){throw new Error('代码不完整或被改动了，请改用短码（如 p4）')}return mapItems(j)}
 async function importItems(items,msg){const L=ensureLoose();const before=allWords().length;const ws=items.map(x=>({...x,id:uid(),status:'new',v:2}));L.words.push(...ws);S.cur='__all';S.idx=before;save();
   toast(msg||`已导入 ${ws.length} 个词`,3000);hist.length=0;renderLib();go('lib',false);
   for(const w of ws){try{await lite(w);if(!w.meaning)w.meaning=await Enrich.meaning(w.word.toLowerCase())}catch(e){}save()}prefetchAll();if(view==='study')renderStudy(false);if(view==='lib')renderLib();return ws.length}
-$('#pasteBtn').onclick=async()=>{try{const items=parseImport($('#pasteBox').value);$('#pasteBox').value='';await importItems(items)}catch(e){toast('无法识别：'+e.message,3500)}};
+$('#pasteBtn').onclick=async()=>{try{const items=await parseImport($('#pasteBox').value);$('#pasteBox').value='';await importItems(items)}catch(e){toast('无法识别：'+e.message,3500)}};
 async function hashImport(){if(!/#import=/.test(location.hash))return;const raw=location.hash;history.replaceState(null,'',location.pathname+location.search);
-  try{const items=parseImport(raw);const code='PZCK1:'+raw.split('#import=')[1];await importItems(items,`已导入 ${items.length} 个词`);
+  try{const items=await parseImport(raw);const code='PZCK1:'+raw.split('#import=')[1];await importItems(items,`已导入 ${items.length} 个词`);
     if(!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches)sheet([['📋 复制导入代码（到主屏幕 App 里粘贴）',()=>{navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast('已复制，打开主屏幕 App → 拍照 → 粘贴导入'),()=>prompt('长按复制这段代码',code))}]],`<b>已导入 ${items.length} 个词</b>如果你平时用的是主屏幕上的「拍照词库」，它和 Safari 的数据是分开的。复制下面的代码，到主屏幕 App 的拍照页「粘贴导入链接/代码」里粘贴即可。`)}
   catch(e){toast('导入链接无效：'+e.message,4000)}}
 window.addEventListener('hashchange',hashImport);
