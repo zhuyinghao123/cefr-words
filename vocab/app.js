@@ -95,8 +95,10 @@ async function wordPop(span){document.querySelectorAll('.sent .w.on').forEach(x=
   play(wordURL(raw),raw);const P=$('#pop');P.style.display='block';P.innerHTML=`<span class="pw">${esc(raw)}</span><span class="pi" id="pi"></span> ${lvBadge({word:raw},'tag')}<div class="muted" id="pm" style="margin-top:6px">查询中…</div>`;
   const known=allWords().find(x=>x.word.toLowerCase()===raw||x.word.toLowerCase()===lem);
   if(known&&known.meaning){$('#pi').textContent=(known.ipaUK||known.ipaUS)?'/'+(known.ipaUK||known.ipaUS)+'/':'';$('#pm').innerHTML=`<div class="pz">${esc((known.pos?known.pos+' ':'')+known.meaning)}</div>`;return}
-  const [ip,m]=await Promise.all([Enrich.ipa(lem).catch(()=>null),Enrich.meaning(lem).catch(()=>'')]);if(P.style.display==='none'||!span.classList.contains('on'))return;
-  $('#pi').textContent=ip?'/'+(ip.uk||ip.us)+'/':'';$('#pm').innerHTML=`<div class="pz">${esc(m||'暂无释义（请检查网络）')}</div>`+(lem!==raw?`<div class="muted" style="font-size:13px">原形 ${esc(lem)}</div>`:'')}
+  const live=()=>P.style.display!=='none'&&span.classList.contains('on');
+  Enrich.ipa(lem).then(ip=>{if(live()&&ip&&$('#pi'))$('#pi').textContent='/'+(ip.uk||ip.us)+'/'}).catch(()=>{});
+  const m=await Enrich.meaning(lem).catch(()=>'')||await Enrich.meaning(raw).catch(()=>'');if(!live())return;
+  $('#pm').innerHTML=`<div class="pz">${esc(m||'暂无释义')}</div>`+(lem!==raw?`<div class="muted" style="font-size:13px">原形 ${esc(lem)}</div>`:'')}
 document.addEventListener('click',e=>{if(!e.target.closest('#pop')&&!e.target.closest('.sent .w')){$('#pop').style.display='none';document.querySelectorAll('.sent .w.on').forEach(x=>x.classList.remove('on'))}});
 // ================= sheet menu =================
 function sheet(items,title=''){$('#sheetT').innerHTML=title;const I=$('#sheetIn');I.innerHTML=items.map((it,i)=>`<button class="item${it[2]?' danger':''}" data-i="${i}">${it[0]}</button>`).join('')+'<button class="item" style="text-align:center;border:0;color:#8b857a">取消</button>';
