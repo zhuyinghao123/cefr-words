@@ -317,20 +317,24 @@ function fixData(){S.lib=Array.isArray(S.lib)?S.lib:[];const L=S.cats.filter(c=>
   const seen=new Set(),key=w=>w.id||w;const ord=[...S.cats.filter(c=>!c.parent).flatMap(p=>[p,...S.cats.filter(k=>k.parent===p.id)]),...S.cats.filter(c=>c.parent&&!S.cats.some(p=>p.id===c.parent))];
   ord.forEach(c=>{c.words=c.words.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true})});S.lib=S.lib.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true});
   const sw=new Set(),dk=w=>{const k=wkey(w);if(!k)return true;if(sw.has(k))return false;sw.add(k);return true};ord.forEach(c=>c.words=c.words.filter(dk));S.lib=S.lib.filter(dk);save()}
-function migrate(){const old=allWords().filter(w=>!w.v||w.v<6||/[A-Za-z]/.test(w.hint||''));if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
+function migrate(){
+  // v6: regenerate auto 谐音 locally for the user's own stored words only (no network, chunked so the UI never blocks)
+  const v5=allWords().filter(w=>w.v===5&&(w.ipaUK||w.ipaUS));if(v5.length)(async()=>{for(let i=0;i<v5.length;i++){const w=v5[i];try{if(!w.hint||/[A-Za-z]/.test(w.hint)||w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint}catch(e){}w.v=6;if(i%20===19)await new Promise(r=>setTimeout(r,0))}save();if(view==='study')renderStudy(false)})();
+  const old=allWords().filter(w=>!w.v||w.v<5||w.v===5&&!w.ipaUK&&!w.ipaUS);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
   let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.status=w.status||'new';w.ocrIpa=w.ipa;need.push(w)}}));
   if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
 // ================= boot =================
 (async()=>{try{const d=await idbGet('kv','state');if(d&&Array.isArray(d.cats))S=d}catch(e){}
+  try{
   fixData();
   if(S.cur!=='__all'&&!cat(S.cur))S.cur='__all';renderStudy(false);window.__firstCard=Math.round(performance.now());
   // heavy work after first paint
   requestAnimationFrame(()=>setTimeout(migrate,50));
   const w=curWord();if(w)sayWord(w).then(ok=>{if(!ok&&!unlocked)setTimeout(()=>{if(!unlocked)$('#hint').style.display='block'},1200)});
-  setTimeout(prefetchAll,800);hashImport()})();
+  setTimeout(prefetchAll,800);hashImport()}catch(e){window.__showErr&&__showErr('boot: '+(e.stack||e.message))}window.__booted=1})();
 // ================= service worker auto-update =================
 if('serviceWorker'in navigator){const had=!!navigator.serviceWorker.controller;let reloading=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!reloading){reloading=true;location.reload()}});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!reloading){const t=+sessionStorage.getItem('swReload')||0;if(Date.now()-t<15000)return;sessionStorage.setItem('swReload',Date.now());reloading=true;location.reload()}});
   navigator.serviceWorker.register('sw.js',{scope:'./'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})})}
 
 $('#catName').onclick=()=>sheet([['全部单词（'+allWords().length+'）',()=>studyCat('__all')],...ordered().map(c=>[(c.parent?'　└ ':'')+esc(c.name)+'（'+count(c)+'）',()=>studyCat(c.id)])]);
