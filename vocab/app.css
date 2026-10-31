@@ -104,3 +104,4 @@ html,body{overflow-x:hidden;max-width:100%}
 .fixbar .cnt b,.fixbar .cnt i{display:block;font-weight:600;font-style:normal}
 .hint{bottom:calc(env(safe-area-inset-bottom) + 178px);font-size:12px;padding:5px 12px}
 #card .ipa span{white-space:nowrap;display:inline-block}
+button,.gbtn,.rplay{touch-action:manipulation;-webkit-tap-highlight-color:transparent}

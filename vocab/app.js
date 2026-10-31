@@ -35,7 +35,7 @@ if('speechSynthesis'in window){pickVoice();speechSynthesis.onvoiceschanged=pickV
 function tts(t){if(!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=voice?voice.lang:'en-US';if(voice)u.voice=voice;u.rate=.92;speechSynthesis.speak(u);speechSynthesis.resume()}catch(e){}}
 function stopAll(){pool.forEach(a=>{if(!a.paused)a.pause()});if(!player.paused)player.pause();if('speechSynthesis'in window)speechSynthesis.cancel()}
 // returns promise resolving true if media started
-function play(url,text){stopAll();const t0=performance.now();const a=getA(url);
+let playSeq=0;function play(url,text){stopAll();const my=++playSeq;const t0=performance.now();const a=getA(url);a.addEventListener('playing',()=>{if(my!==playSeq)a.pause()},{once:true});
   const mark=x=>{x.addEventListener('playing',()=>{lastLatency=Math.round(performance.now()-t0);window.__lat=lastLatency},{once:true})};
   if(a.readyState>=2){a.currentTime=0;mark(a);return a.play().then(()=>{unlocked=true;return true}).catch(err=>{if(err&&err.name==='NotAllowedError')throw err;tts(text);cacheAudio([url]);return false})}
   // not buffered yet: speak immediately, keep loading for next time
@@ -87,7 +87,7 @@ const trBusy=new Set();async function autoTrans(w){if(trBusy.has(w.id))return;tr
   if(t&&!w.trans){w.trans=t;save()}if(curWord()!==w||!$('#trans'))return;if(w.trans)return $('#trans').innerHTML=esc(w.trans);
   let g='';try{g=await Enrich.gloss(w.sentence)}catch(e){}if(curWord()===w&&$('#trans'))$('#trans').innerHTML=g?`<span class="tag">离线逐词释义 · 非整句翻译</span> <span class="gl">${esc(g)}</span>`:'<span class="muted">翻译暂时失败，联网后会自动重试</span>'}
 $('#spW').innerHTML=ICON.spk;$('#prev').innerHTML=ICON.l;$('#next').innerHTML=ICON.r;
-$('#spW').onclick=()=>sayWord(curWord());$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#spW').onclick=()=>sayWord(curWord());['prev','next'].forEach((id,k)=>{const b=$('#'+id),d=k?1:-1;let viaPtr=0;b.addEventListener('pointerup',e=>{if(e.pointerType==='mouse'&&e.button)return;viaPtr=Date.now();step(d)});b.onclick=()=>{if(Date.now()-viaPtr<700)return;step(d)}});
 function step(d){const n=studyWords().length;if(!n)return;S.idx=(S.idx+d+n)%n;save();renderStudy(true)}
 function mark(st){const w=curWord();if(!w)return;w.status=st;save();step(1)}
 $('#dunno').onclick=()=>mark('learning');$('#gotit').onclick=()=>mark('known');
@@ -311,7 +311,7 @@ V.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[
 
 // fit study card: word on one line, whole card above the 还不会/记住了 bar, no inner scroll
 let fitting=false;function fitCard(){const C=$('#card'),A=document.querySelector('#v-study .acts');if(!C||fitting||view!=='study')return;fitting=true;
-  const W=C.querySelector('.word'),T=C.querySelector('.wt');C.style.zoom='';C.style.marginLeft='';if(W&&T){W.style.fontSize='';let f=parseFloat(getComputedStyle(W).fontSize);const avail=()=>W.parentElement.clientWidth-((W.querySelector('.lv')||{}).offsetWidth||0)-14;while(f>20&&T.getBoundingClientRect().width>avail()){f-=2;W.style.fontSize=f+'px'}}
+  const W=C.querySelector('.word'),T=C.querySelector('.wt');C.style.zoom='';C.style.marginLeft='';if(W&&T){W.style.fontSize='';let f=parseFloat(getComputedStyle(W).fontSize);const H=W.parentElement,cs=getComputedStyle(H),lv=W.querySelector('.lv');const over=()=>{const hb=H.getBoundingClientRect(),L=hb.left+parseFloat(cs.paddingLeft),Rr=hb.right-parseFloat(cs.paddingRight);const t=T.getBoundingClientRect(),r=lv?Math.max(t.right,lv.getBoundingClientRect().right):t.right;return t.left<L-0.5||r>Rr+0.5||(lv&&lv.getBoundingClientRect().top>t.top+t.height*.5)};while(f>18&&over()){f-=1;W.style.fontSize=f+'px'}}
   const lim=(A?A.getBoundingClientRect().top:innerHeight)-8;let z=1;while(z>.62&&C.getBoundingClientRect().bottom>lim){z-=.04;C.style.zoom=z;C.style.marginLeft=(62/z)+'px'}fitting=false}
 addEventListener('resize',()=>requestAnimationFrame(fitCard));
 try{new ResizeObserver(()=>requestAnimationFrame(fitCard)).observe($('#card'))}catch(_){}
