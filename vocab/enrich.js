@@ -50,12 +50,45 @@ function xieyin(ip){if(!ip)return'';let s=ip.normalize('NFD').replace(/n\u0329/g
 // ---------- Chinese meaning ----------
 function cleanZh(list){const out=[];for(let m of list){if(!m)continue;m=m.replace(/(\S+) (\S+) \[[a-z0-9 ]*\]/,'$2').replace(/\[[^\]]*\]/g,' ').replace(/[a-zA-Z]+\./g,' ');
   for(const p of m.split(/[\s,，;；、]+/)){if(/^[\u4e00-\u9fff]{1,6}$/.test(p)&&!out.includes(p))out.push(p)}if(out.length>=3)break}return out.slice(0,2)}
-async function meaning(word){return cached('zh:'+word,async()=>{const j=await getJSON('https://api.mymemory.translated.net/get?langpair=en|zh-CN&q='+encodeURIComponent(word));if(!j)return null;
+async function meaning(word){try{const e=await local(word);if(e)return shortZh(e.zh)}catch(_){}
+  return cached('zh:'+word,async()=>{const j=await getJSON('https://api.mymemory.translated.net/get?langpair=en|zh-CN&q='+encodeURIComponent(word));if(!j)return null;
   const c=cleanZh([j.responseData&&j.responseData.translatedText,...(j.matches||[]).filter(m=>+m.match>=0.85).map(m=>m.translation.replace(/^(\S+) (\S+) \[[^\]]*\]/,'$2'))]);return c.length?c.join('，'):null})}
 const garbledZh=s=>!s||!/[\u4e00-\u9fff]{2,}/.test(s)||/[a-zA-Z]{2,}/.test(s);
+
+// ---------- offline ECDICT (trimmed, gzip) ----------
+let DP=null,DICT=null;
+async function dict(){if(DICT)return DICT;if(!DP)DP=(async()=>{let t;
+  if(typeof window=='undefined')t=require('zlib').gunzipSync(require('fs').readFileSync(__dirname+'/ecdict.tsv.gz')).toString('utf8');
+  else{const r=await fetch(base+'ecdict.tsv.gz');const b=new Uint8Array(await r.arrayBuffer());
+    if(b[0]===0x1f&&b[1]===0x8b)t=await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).text();else t=new TextDecoder().decode(b)}
+  const m=new Map();for(const l of t.split('\n')){const a=l.split('\t');if(a.length===3)m.set(a[0],[+a[1]||999999,a[2]])}DICT=m;return m})().catch(e=>{DP=null;throw e});return DP}
+function lemmas(w){w=w.toLowerCase().replace(/[’']s$/,'');const r=[w];if(CE&&CE.lemma)r.push(CE.lemma(w));
+  const R=[[/ies$/,'y'],[/ied$/,'y'],[/ves$/,'f'],[/es$/,''],[/s$/,''],[/ed$/,''],[/ed$/,'e'],[/(.)\1ed$/,'$1'],[/ing$/,''],[/ing$/,'e'],[/(.)\1ing$/,'$1'],[/er$/,''],[/est$/,''],[/ly$/,'']];
+  for(const [a,b] of R)if(a.test(w))r.push(w.replace(a,b));return[...new Set(r)]}
+async function local(word){const D=await dict();for(const k of lemmas(word)){const v=D.get(k);if(v)return{word:k,rank:v[0],zh:v[1]}}return null}
+const shortZh=z=>z.split('；').slice(0,2).join('；').slice(0,40);
+async function gloss(t){const D=await dict();const out=[];for(const tok of (t.match(/[A-Za-z][A-Za-z’'-]*/g)||[])){const e=await local(tok);
+  if(!e||e.rank<=40&&!/^[A-Z]/.test(tok)&&FW.has(tok.toLowerCase()))continue;
+  const z=e.zh.split(/[；;]/)[0].replace(/^[a-z]+\.\s*/,'').split(/[,，]/)[0].trim();if(z)out.push(tok+' '+z)}return out.join('｜')}
+// ---------- context-aware OCR snapping (OCR only) ----------
+const FW=new Set('the a an this that these those there their they them then than with which when where what who whom whose while into onto from have has had were was are is been being will would could should shall might must does did done also only some such each every other more most many much very both either neither its it our your his her him she he we you not nor but and for of to in on at by as or if so be do'.split(' '));
+const DET=new Set('the a an this that these those their his her its our your my some each every no any which what whose'.split(' '));
+function ocrFix(sent,head){if(!DICT||!sent)return sent;const toks=sent.split(/(\s+)/);const W=toks.map(x=>(x.match(/[A-Za-z]+/)||[''])[0]);
+  const idx=W.map((w,i)=>w?i:-1).filter(i=>i>=0);
+  for(let n=0;n<idx.length;n++){const i=idx[n],w=W[i],lw=w.toLowerCase();if(lw.length<2||FW.has(lw)||head&&lw.slice(0,4)===head.toLowerCase().slice(0,4))continue;
+    const prev=n?W[idx[n-1]].toLowerCase():'',next=n+1<idx.length?W[idx[n+1]].toLowerCase():'';let e=null;for(const k of lemmas(lw)){e=DICT.get(k)||(LEX&&LEX.has(k)?[99999,'']:null);if(e)break}const rk=e?e[0]:1e9;
+    let best=null,bs=0;for(const f of FW){if(f[0]!==lw[0]||Math.abs(f.length-lw.length)>2)continue;const d=lev(lw,f);if(d>2||d>=lw.length/2)continue;
+      let sc=0;if(!e)sc=3-d;else if(DET.has(f)){const nx=next&&lemmas(next).some(k=>DICT.has(k));if(next&&!FW.has(next)&&nx&&!DET.has(prev)&&(prev===''||!/^(the|a|an)$/.test(prev)))sc=(rk>1500?2.5:0)-d*.5;}
+      let pf=0;while(pf<f.length&&f[pf]===lw[pf])pf++;sc+=pf*.1;if(sc>bs){bs=sc;best=f}}
+    if(best&&bs>=1){let r=best;if(/^[A-Z]/.test(w))r=r[0].toUpperCase()+r.slice(1);toks[i]=toks[i].replace(w,r);W[i]=r}}
+  return toks.join('')}
 // ---------- translation ----------
-async function translate(t){if(!t)return'';return cached('tr:'+t,async()=>{const j=await getJSON('https://api.mymemory.translated.net/get?langpair=en|zh-CN&q='+encodeURIComponent(t.slice(0,480)));
-  const s=j&&j.responseData&&j.responseData.translatedText;if(!s||/MYMEMORY WARNING|INVALID|QUERY LENGTH/i.test(s)||+j.responseStatus>=400||!/[\u4e00-\u9fff]/.test(s))return null;return s})||''}
+const okZh=s=>s&&/[\u4e00-\u9fff]/.test(s)&&!/MYMEMORY WARNING|INVALID|QUERY LENGTH/i.test(s);
+async function translate(t){if(!t)return'';return cached('tr:'+t,async()=>{
+  const j=await getJSON('https://api.mymemory.translated.net/get?langpair=en|zh-CN&q='+encodeURIComponent(t.slice(0,480)),6000);
+  let s=j&&+j.responseStatus<400&&j.responseData&&j.responseData.translatedText;if(okZh(s))return s;
+  const g=await getJSON('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q='+encodeURIComponent(t.slice(0,480)),5000);
+  s=g&&Array.isArray(g[0])?g[0].map(x=>x[0]).join(''):'';return okZh(s)?s:null})||''}
 // ---------- sentences ----------
 const stemOf=w=>w.replace(/(ation|ion|e|y|s)$/,'').slice(0,Math.max(4,w.length-3));
 function hasTarget(s,w){return new RegExp('\\b'+stemOf(w),'i').test(s)}
@@ -90,7 +123,7 @@ async function enrich(e,opts={}){const log=opts.log||(()=>{});await lex();const 
   const ip=await ipa(e.word);e.ipaUK=ip?ip.uk:'';e.ipaUS=ip?ip.us:'';e.ipaSrc=ip?ip.src:'';e.ipa=e.ipaUK?'/'+e.ipaUK+'/':(e.ipaUS?'/'+e.ipaUS+'/':'');
   e.hint=xieyin(e.ipaUK||e.ipaUS);
   if(garbledZh(e.meaning)){const m=await meaning(e.word);if(m){e.meaning=m;flags.push('释义补全')}}
-  e.sentence=pre(e.sentence);const j=judge(e.sentence,e.word);
+  e.sentence=pre(e.sentence);if(opts.ocr){try{await dict();const f=ocrFix(e.sentence,e.word);if(f!==e.sentence){flags.push('OCR校正');e.sentence=f}}catch(_){}}const j=judge(e.sentence,e.word);
   if(!j.ok){const r=repair(e.sentence,e.word),j2=judge(r,e.word);
     if(j2.ok){if(r!==e.sentence)flags.push('例句修复');e.sentence=r}
     else{const x=await example(e.word);if(x){e.ocrSentence=e.sentence;e.sentence=x.sentence;e.trans=x.trans||'';e.filled=true;flags.push('补全')}else if(r)e.sentence=r}}
@@ -98,6 +131,6 @@ async function enrich(e,opts={}){const log=opts.log||(()=>{});await lex();const 
   const lv=level(e.word);e.level=lv.lv;e.levelSrc=lv.src;e.flags=flags;return e}
 function linkDerived(list){for(const a of list){const rel=list.filter(b=>b!==a&&b.word.slice(0,6)===a.word.slice(0,6)&&a.word.length>=6);
   if(rel.length&&!a.extra)a.extra='派生 '+rel.map(b=>`${b.word} ${b.ipa||''} (${b.pos||''}) ${b.meaning||''}`.replace(/\s+/g,' ').trim()).join('；')}return list}
-g.Enrich={enrich,ipa,xieyin,meaning,translate,example,snap,level,judge,repair,linkDerived,lex,setCache:c=>cache=c,setBase:b=>base=b};
+g.Enrich={enrich,dict,local,gloss,ocrFix,ipa,xieyin,meaning,translate,example,snap,level,judge,repair,linkDerived,lex,setCache:c=>cache=c,setBase:b=>base=b};
 if(typeof module!='undefined')module.exports=g.Enrich;
 })(typeof window!='undefined'?window:globalThis);
