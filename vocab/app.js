@@ -161,7 +161,7 @@ function renderWords(){const c=cat(wCat);if(!c)return;$('#wTitle').textContent=c
     d.innerHTML=`${wMode&&wMode!=='edit'?`<span class="chk${wSel.has(w.id)?' on':''}">✓</span>`:'<span class="drag">☰</span>'}<div class="t"><b>${esc(w.word)}</b> ${lvBadge(w,'tag')}<div class="sub">${esc(w.pos)} ${esc(w.meaning)}${w.hint?'　谐音 '+esc(w.hint):''}</div></div>${wMode?'':'<button class="mini" data-a="-1">↑</button><button class="mini" data-a="1">↓</button>'}`;
     if(!wMode){d.insertAdjacentHTML('beforeend','<button class="swdel">删除</button>');swipe(d);d.querySelector('.swdel').onclick=ev=>{ev.stopPropagation();delWords(null,[w.id])}}
     if(wMode&&wMode!=='edit')d.onclick=()=>{wSel.has(w.id)?wSel.delete(w.id):wSel.add(w.id);renderWords()};
-    d.querySelectorAll('button').forEach(b=>b.onclick=()=>{const j=i+ +b.dataset.a;if(j<0||j>=c.words.length)return;moveIn(c.words,w,j);save();renderWords()});L.appendChild(d)});
+    d.querySelectorAll('button.mini').forEach(b=>b.onclick=()=>{const j=i+ +b.dataset.a;if(j<0||j>=c.words.length)return;moveIn(c.words,w,j);save();renderWords()});L.appendChild(d)});
   if(!wMode)enableDrag(L,(f,t)=>{const a=c.words.find(x=>x.id===f),b=c.words.find(x=>x.id===t);moveIn(c.words,a,c.words.indexOf(b));save();renderWords()})}
 $('#wMoveMode').onclick=()=>{wMode=wMode==='move'?null:'move';wSel.clear();renderWords()};
 $('#wAddMode').onclick=()=>{wMode=wMode==='add'?null:'add';wSel.clear();renderWords()};
