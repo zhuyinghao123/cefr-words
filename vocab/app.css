@@ -90,3 +90,4 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 #ctlP .ctlr{display:flex;gap:8px;align-items:center;margin-top:8px}#ctlP input{flex:1}#ctlP .pb{height:34px;padding:0 10px;font-size:13px}
 @keyframes sl{from{transform:translateX(40px);opacity:.3}to{transform:none;opacity:1}}@keyframes sr{from{transform:translateX(-40px);opacity:.3}to{transform:none;opacity:1}}
 #card.sl{animation:sl .22s ease-out}#card.sr{animation:sr .22s ease-out}
+html,body{overscroll-behavior-x:none}#v-study{touch-action:pan-y}
