@@ -18,7 +18,7 @@ function parse(lines,minConf=45){
     if(m&&L.c>=40){
       if(cur)out.push(cur);
       let mean=cjkJoin(m[3]);const zh=(mean.match(/[\u4e00-\u9fff\[\]［］（）()，,；;…、\s]+/g)||[]).join('').trim();
-      cur={word:m[1].toLowerCase(),ipa:'',pos:m[2]+'.',meaning:zh.replace(/^[\s,，;；]+|[\s,，;；]+$/g,'').replace(/\s/g,'').replace(/[(（]\s*[)）]/g,''),sentence:'',hint:prevNote||'',trans:''};
+      cur={word:m[1].toLowerCase(),ipa:'',pos:m[2]+'.',meaning:zh.replace(/^[\s,，;；]+|[\s,，;；]+$/g,'').replace(/\s/g,'').replace(/\[\s*\]|［\s*］/g,'').replace(/[(（]\s*[)）]/g,'').replace(/\)\)+/g,')').replace(/([\u4e00-\u9fff]{2})[六一二三:：](?=[\u4e00-\u9fff]{2})/g,'$1；'),sentence:'',hint:prevNote||'',trans:''};
       prevNote=null;continue;}
     if(L.c<minConf||garbled(t)){ // possible handwritten note above next word
       const zh=(cjkJoin(t).match(/[\u4e00-\u9fff]+/g)||[]).join('');prevNote=zh.length>=2?zh:null;continue;}
