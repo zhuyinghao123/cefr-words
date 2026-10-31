@@ -73,11 +73,11 @@ const ST={new:'新词',learning:'学习中',known:'已掌握'};
 function renderStudy(speak){const ws=studyWords(),C=$('#card');const cc=cat(S.cur);$('#catName').textContent=(S.cur==='__all'?'全部单词':cc?cc.name:'全部单词')+' ▾';
   $('#fixbar').style.visibility=ws.length?'visible':'hidden';if(!ws.length){$('#cnt').textContent='';C.innerHTML=`<div class="acc"></div><div class="head" style="padding:60px 24px"><div class="word" style="font-size:34px">还没有单词</div><p class="muted" style="margin-top:16px">点下方红色相机按钮拍照导入，<br>或在「词库」里手动添加。</p></div>`;return}
   const w=curWord();const ipa=w.ipaUK||w.ipaUS?[w.ipaUK&&`<span><small>英</small>/${esc(w.ipaUK)}/</span>`,w.ipaUS&&`<span><small>美</small>/${esc(w.ipaUS)}/</span>`].filter(Boolean).join(''):esc(w.ipa||'');
-  C.innerHTML=`<div class="acc"></div><div class="head"><div class="word">${esc(w.word)}${lvBadge(w)}</div><div class="ipa">${ipa}</div>
+  C.innerHTML=`<div class="acc"></div><div class="head"><div class="word"><span class="wt">${esc(w.word)}</span>${lvBadge(w)}</div><div class="ipa">${ipa}</div>
    <div class="mean">${w.pos?`<span class="pos">${esc(w.pos)}</span>`:''}${esc(w.meaning)}</div>${w.hint?`<span class="pill">谐音 ${esc(w.hint)}</span>`:''}</div>
    <div class="ex"><div class="exh"><span>例句 · 点不认识的词${w.filled?'<span class="tag">补全</span>':''}</span><button class="gbtn" id="spS" aria-label="读例句">${ICON.spk}</button></div>
    <div class="sent">${sentHTML(w.sentence||'',w.word)}</div>${w.sentence?`<div class="trans" id="trans">${w.trans?esc(w.trans):'<span class="muted">翻译中…</span>'}</div>`:''}
-   ${w.extra?`<div class="extra"><b>书上还写了</b>${esc(w.extra)}</div>`:''}</div>`;$('#cnt').textContent=`${S.idx+1} / ${ws.length}　${ST[w.status||'new']}`;$('#spS').onclick=()=>saySent(w);
+   ${w.extra?`<div class="extra"><b>书上还写了</b>${esc(w.extra)}</div>`:''}</div>`;$('#cnt').innerHTML=`<b>${S.idx+1}/${ws.length}</b><i>${ST[w.status||'new']}</i>`;requestAnimationFrame(fitCard);$('#spS').onclick=()=>saySent(w);
   if(w.sentence&&!w.trans)autoTrans(w);
   C.querySelectorAll('.sent .w').forEach(s=>s.onclick=e=>{e.stopPropagation();wordPop(s)});
   const n=ws.length,nx=ws[(S.idx+1)%n],pv=ws[(S.idx-1+n)%n];
@@ -308,3 +308,10 @@ $('#catName').onclick=()=>sheet([['全部单词（'+allWords().length+'）',()=>
 V.addEventListener('touchstart',e=>{if(e.target.closest('#fixbar,.nav,.acts,button,input,textarea,.pop,.sheet')){x0=null;return}x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now()},{passive:true});
 V.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;
   if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*2)return;const d=dx<0?1:-1;const C=$('#card');step(d);C.classList.remove('sl','sr');void C.offsetWidth;C.classList.add(d>0?'sl':'sr')},{passive:true})})();
+
+// fit study card: word on one line, whole card above the 还不会/记住了 bar, no inner scroll
+let fitting=false;function fitCard(){const C=$('#card'),A=document.querySelector('#v-study .acts');if(!C||fitting||view!=='study')return;fitting=true;
+  const W=C.querySelector('.word'),T=C.querySelector('.wt');C.style.zoom='';if(W&&T){W.style.fontSize='';let f=parseFloat(getComputedStyle(W).fontSize);const avail=()=>W.parentElement.clientWidth-((W.querySelector('.lv')||{}).offsetWidth||0)-14;while(f>20&&T.scrollWidth>avail()){f-=2;W.style.fontSize=f+'px'}}
+  const lim=(A?A.getBoundingClientRect().top:innerHeight)-8;let z=1;while(z>.62&&C.getBoundingClientRect().bottom>lim){z-=.04;C.style.zoom=z}fitting=false}
+addEventListener('resize',()=>requestAnimationFrame(fitCard));
+try{new ResizeObserver(()=>requestAnimationFrame(fitCard)).observe($('#card'))}catch(_){}

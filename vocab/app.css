@@ -92,3 +92,14 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 #card.sl{animation:sl .22s ease-out}#card.sr{animation:sr .22s ease-out}
 html,body{overscroll-behavior-x:none}#v-study{touch-action:pan-y}
 .lv{position:static;display:inline-block;vertical-align:top;margin-left:6px;font-size:12px}.lvsrc{display:block;margin:2px 0 0}.ol .lvsrc,.row .lvsrc{display:inline}
+/* v5-13 */
+.word{white-space:nowrap;word-break:keep-all;overflow-wrap:normal;hyphens:none;max-width:100%}
+.word .wt{white-space:nowrap}
+html,body,*{scrollbar-width:none}::-webkit-scrollbar{display:none;width:0;height:0}
+html,body{overflow-x:hidden;max-width:100%}
+#v-study{padding-bottom:calc(env(safe-area-inset-bottom) + 180px)}
+#v-study .head{padding-top:14px;padding-bottom:12px}#v-study .ex{padding-top:12px;padding-bottom:14px}
+.fixbar{width:64px;box-sizing:border-box;padding:8px 4px}
+.fixbar .cnt{width:56px;margin:0;text-align:center;font-size:10px;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+.fixbar .cnt b,.fixbar .cnt i{display:block;font-weight:600;font-style:normal}
+.hint{bottom:calc(env(safe-area-inset-bottom) + 178px);font-size:12px;padding:5px 12px}
