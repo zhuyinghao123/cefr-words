@@ -80,3 +80,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 .swdel{display:none;background:#d9443a;color:#fff;border:0;border-radius:8px;height:36px;padding:0 14px;font-size:14px;flex:none}
 .open>.swdel{display:block}
 .lvsrc{font-size:11px;color:#8a8378;margin-left:4px;text-decoration:underline}
+/* v5-4: left control group just below the volume-down button; nudge via --ctl-top */
+:root{--ctl-top:45dvh}
+.fixbar{left:calc(env(safe-area-inset-left) + 8px);top:var(--ctl-top);bottom:auto;transform:none;width:auto;flex-direction:column;align-items:center;gap:8px;padding:8px 6px;background:#f3efe6e6;border-radius:18px;box-shadow:0 2px 10px #0001}
+.fixbar .cnt{font-size:11px}
+#v-study #card{margin-left:62px}
