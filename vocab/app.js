@@ -22,7 +22,7 @@ const allWords=()=>[...(S.lib||[]),...S.cats.flatMap(c=>c.words)];
 function ordered(){const r=[];S.cats.filter(c=>!c.parent).forEach(p=>{r.push(p);kids(p.id).forEach(k=>r.push(k))});return r}
 function newCat(name,parent=null){const c={id:uid(),name,parent,words:[]};S.cats.push(c);return c}
 function moveIn(arr,item,ni){arr.splice(arr.indexOf(item),1);arr.splice(ni,0,item)}
-function lvBadge(w,cls='lv'){const l=Enrich.level(w.word||'');const u='https://dictionary.cambridge.org/dictionary/english/'+encodeURIComponent(l.lemma||w.word);
+function lvBadge(w,cls='lv'){const l=Enrich.level(w.word||'');if(!l.lv)return'';const u='https://dictionary.cambridge.org/dictionary/english/'+encodeURIComponent(l.lemma||w.word);
   return `<a class="${cls}${l.lv?'':' na'}" href="${u}" target="_blank" rel="noopener" title="${l.src}（点开剑桥词典核对）" onclick="event.stopPropagation()">${l.lv||'未收录'}</a>`}
 // ================= audio =================
 const wordURL=w=>'https://dict.youdao.com/dictvoice?type=1&audio='+encodeURIComponent(w.trim());
@@ -111,13 +111,13 @@ $('#libMore').onclick=()=>sheet(commonMenu());
 function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered();
   if(!all.length)L.innerHTML='<p class="muted">先新建一个大类吧</p>';
   const A=document.createElement('div');A.className='row'+(S.cur==='__all'?' sel':'');A.innerHTML=`<span class="drag" style="visibility:hidden">☰</span><div class="t"><b>📚 全部单词</b><small>${allWords().length} 词</small></div><button class="pb r" style="height:34px;padding:0 10px;font-size:13px">学全部</button>`;A.querySelector('button').onclick=()=>studyCat('__all');L.appendChild(A);
-  const O=document.createElement('div');O.className='row';O.id='outRow';O.innerHTML=`<span class="drag" style="visibility:hidden">☰</span><div class="t"><b>外面（未归类）</b><small>${S.lib.length} 词 · 不在任何分类里</small></div><button class="mini" data-a="manage">管理</button>`;O.querySelector('button').onclick=()=>openWords('__lib');L.appendChild(O);
   all.forEach(c=>{const d=document.createElement('div');d.className='row'+(c.parent?' child':'')+(c.id===S.cur?' sel':'');d.dataset.id=c.id;
     d.innerHTML=`<span class="drag">☰</span><div class="t"><b>${esc(c.name)}</b><small>${count(c)} 词</small></div>
     <button class="pb r" style="height:34px;padding:0 10px;font-size:13px" data-a="study">学这个类</button><button class="mini" data-a="up">↑</button><button class="mini" data-a="dn">↓</button>${c.parent?'':'<button class="mini" data-a="sub" title="新建子类">＋</button>'}<button class="mini" data-a="more">⋯</button>`;
     d.querySelector('.t').onclick=()=>{S.cur=c.id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)};
     d.querySelectorAll('button').forEach(b=>b.onclick=()=>catAct(c,b.dataset.a));L.appendChild(d)});
-  const OL=document.createElement('div');OL.id='outList';OL.innerHTML=S.lib.length?'<p class="muted" style="margin:14px 4px 6px">外面的单词（未归类）</p>'+S.lib.map(w=>`<div class="row child" data-w="${w.id}"><div class="t"><b>${esc(w.word)}</b><div class="sub">${esc(w.pos||'')} ${esc(w.meaning||'')}</div></div></div>`).join(''):'';OL.querySelectorAll('[data-w]').forEach(r=>r.onclick=()=>openWords('__lib'));L.appendChild(OL);
+  const OL=document.createElement('div');OL.id='outList';OL.innerHTML=S.lib.length?`<div class="olh"><span>未归类的单词</span><button class="olb" id="olMove">多选加入分类</button></div><ul class="ol">${S.lib.map(w=>`<li data-w="${w.id}"><b>${esc(w.word)}</b> <span>${esc(w.pos||'')} ${esc(w.meaning||'')}</span></li>`).join('')}</ul>`:'';
+  L.appendChild(OL);const om=OL.querySelector('#olMove');if(om)om.onclick=()=>{openWords('__lib');wMode='move';renderWords()};OL.querySelectorAll('li').forEach(li=>li.onclick=()=>{const k=S.lib.findIndex(w=>w.id===li.dataset.w);if(k<0)return;S.cur='__all';S.idx=k;save();hist.length=0;go('study',false);renderStudy(true)});
   enableDrag(L,(from,to)=>{const a=cat(from),b=cat(to);if(!a||!b||a.lib||b.lib||(a.parent||null)!==(b.parent||null))return toast('只能在同级内拖动');moveIn(S.cats,a,S.cats.indexOf(b));save();renderLib()})}
 function studyCat(id){S.cur=id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)}
 function catAct(c,a){if(a==='study')return studyCat(c.id);
@@ -136,7 +136,7 @@ function catOptions(sel){sel.innerHTML='<option value="__lib">不分类（放在
 // ================= words of a category =================
 let wCat=null,wMode=null,wSel=new Set();
 function openWords(id){wCat=id;wMode=null;wSel.clear();renderWords();go('words')}
-function renderWords(){const c=cat(wCat);if(!c)return;$('#wTitle').textContent=c.lib?'外面（未归类）':c.name;const L=$('#wList');$('#wAddMode').style.display=c.lib?'none':'';$('#wOutMode').style.display=c.lib?'none':'';$('#wAddMode').classList.toggle('r',wMode==='add');$('#wOutMode').classList.toggle('r',wMode==='out');
+function renderWords(){const c=cat(wCat);if(!c)return;$('#wTitle').textContent=c.lib?'未归类的单词':c.name;const L=$('#wList');$('#wAddMode').style.display=c.lib?'none':'';$('#wOutMode').style.display=c.lib?'none':'';$('#wAddMode').classList.toggle('r',wMode==='add');$('#wOutMode').classList.toggle('r',wMode==='out');
   const list=wMode==='add'?S.lib:c.words;L.innerHTML=wMode==='add'?'<p class="muted">只列出外面（未归类）的单词；已在其他分类里的单词不能选。</p>'+(S.lib.length?'':'<p class="muted">外面没有未归类的单词</p>'):(c.words.length?'':(c.lib?'<p class="muted">导入的单词会放在这里。点「多选加入分类」把它们放进分类，放进去后就不再显示在外面。</p>':'<p class="muted">这个分类自身没有单词（子类单词请到子类里管理）</p>'));
   $('#wOkWrap').innerHTML=wMode?'<button class="ok" id="wOk">✓</button>':'';if(wMode)$('#wOk').onclick=wFinish;
   $('#wDelMode').classList.toggle('r',wMode==='del');$('#wMoveMode').classList.toggle('r',wMode==='move');$('#wEditMode').classList.toggle('r',wMode==='edit');
@@ -167,7 +167,7 @@ function editorHTML(w){return `<div class="two"><input class="w" data-k="word" p
 function bindEditor(d,w,live){d.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{w[i.dataset.k]=i.value;if(i.dataset.k==='word'){d.querySelector('[data-lv]').innerHTML=lvBadge(w,'tag')}if(i.dataset.k==='sentence')w.filled=false;if(live)save()})}
 // ================= enrichment helpers =================
 async function lite(w,force){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip&&(force||!w.ipaUK&&!w.ipaUS)){w.ipaUK=ip.uk;w.ipaUS=ip.us}
-  if(!w.hint||force&&w.hintAuto!==false)w.hint=Enrich.xieyin(w.ipaUK||w.ipaUS)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2}
+  if(!w.hint||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=3}
 // ================= photo import =================
 let shots=[];
 $('#pickBtn').onclick=()=>$('#pick').click();$('#shootBtn').onclick=()=>$('#shoot').click();
@@ -253,7 +253,7 @@ $('#mAuto').onclick=async()=>{const w=mWord;if(!w.word.trim())return toast('先�
   const e=await Enrich.enrich({...w,word:w.word.trim()});['ipaUK','ipaUS','hint','meaning','sentence','trans','filled'].forEach(k=>{if(!w[k]||k==='ipaUK'||k==='ipaUS')w[k]=e[k]});if(!w.pos&&e.pos)w.pos=e.pos;
   const sel=$('#mCat')&&$('#mCat').value;$('#mForm').innerHTML=(mEdit?'':'<div class="fm"><label>分类</label><select id="mCat"></select></div>')+editorHTML(w);if(!mEdit){catOptions($('#mCat'));$('#mCat').value=sel}bindEditor($('#mForm'),w,mEdit);b.textContent='自动补全音标 / 谐音 / 释义 / 翻译';if(mEdit)save()};
 $('#mOk').onclick=async()=>{const w=mWord;if(!w.word.trim())return toast('请输入单词');w.word=w.word.trim();
-  if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);if(!w.hint&&(w.ipaUK||w.ipaUS))w.hint=Enrich.xieyin(w.ipaUK||w.ipaUS);
+  if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);if(!w.hint&&(w.ipaUK||w.ipaUS))w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS);
   if(!mEdit){(cat($('#mCat').value)||LIBC).words.push(w);toast('已添加，可继续输入');save();prefetchAll();openManual();hist.pop()}else{save();toast('已保存');back()}};
 // ================= backup / restore =================
 function backup(){const b=new Blob([JSON.stringify({app:'paizhaociku',v:2,date:new Date().toISOString(),data:S},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='拍照词库备份-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
@@ -264,8 +264,9 @@ $('#restoreFile').onchange=async e=>{const f=e.target.files[0];e.target.value=''
 function fixData(){S.lib=Array.isArray(S.lib)?S.lib:[];const L=S.cats.filter(c=>c.loose||c.id==='__loose');L.forEach(c=>S.lib.push(...c.words));S.cats=S.cats.filter(c=>!L.includes(c));if(L.some(c=>c.id===S.cur))S.cur='__all';
   const seen=new Set(),key=w=>w.id||w;const ord=[...S.cats.filter(c=>!c.parent).flatMap(p=>[p,...S.cats.filter(k=>k.parent===p.id)]),...S.cats.filter(c=>c.parent&&!S.cats.some(p=>p.id===c.parent))];
   ord.forEach(c=>{c.words=c.words.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true})});S.lib=S.lib.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true});save()}
-function migrate(){let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.status=w.status||'new';w.ocrIpa=w.ipa;need.push(w)}}));
-  if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyin(w.ipaUK||w.ipaUS);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
+function migrate(){const old=allWords().filter(w=>w.v&&w.v<3);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
+  let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.status=w.status||'new';w.ocrIpa=w.ipa;need.push(w)}}));
+  if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
 // ================= boot =================
 (async()=>{try{const d=await idbGet('kv','state');if(d&&Array.isArray(d.cats))S=d}catch(e){}
   fixData();

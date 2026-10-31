@@ -1,5 +1,5 @@
-const V='vocab-v5-2',AUD='vocab-audio';
-const A=['./','index.html','app.css','app.js','parse.js','enrich.js','cefr.js','ecdict.tsv.gz','manifest.json','icon-192.png','icon-512.png'];
+const V='vocab-v5-3',AUD='vocab-audio';
+const A=['./','index.html','app.css','app.js','parse.js','enrich.js','cefr.js','ecdict.tsv.gz','manifest.json','icon-192.png','icon-512.png','favicon.ico'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(A)))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x.startsWith('vocab-v')&&x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 const isAudio=u=>u.hostname==='dict.youdao.com'&&u.pathname==='/dictvoice'||u.hostname==='translate.google.com'&&u.pathname==='/translate_tts';
