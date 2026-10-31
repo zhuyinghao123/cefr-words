@@ -23,7 +23,7 @@ function ordered(){const r=[];S.cats.filter(c=>!c.parent).forEach(p=>{r.push(p);
 function newCat(name,parent=null){const c={id:uid(),name,parent,words:[]};S.cats.push(c);return c}
 function moveIn(arr,item,ni){arr.splice(arr.indexOf(item),1);arr.splice(ni,0,item)}
 function lvBadge(w,cls='lv'){const l=Enrich.level(w.word||'');if(!l.lv)return'';const u='https://dictionary.cambridge.org/dictionary/english/'+encodeURIComponent(l.lemma||w.word);
-  return `<span class="${cls}">${l.lv}</span><a class="lvsrc" href="${u}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(l.src||'')} · 剑桥核对↗</a>`}
+  return `<a class="${cls}" href="${u}" target="_blank" rel="noopener" title="来源 ${esc(l.src||'')}，点开剑桥词典核对" onclick="event.stopPropagation()">${l.lv}</a><small class="lvsrc">${esc(l.src||'')} · 点等级看剑桥</small>`}
 // ================= audio =================
 const wordURL=w=>'https://dict.youdao.com/dictvoice?type=1&audio='+encodeURIComponent(w.trim());
 const sentURL=s=>'https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q='+encodeURIComponent(s.trim().slice(0,200));
