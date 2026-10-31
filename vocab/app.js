@@ -104,7 +104,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#pop')&&!e.target.cl
 function sheet(items,title=''){$('#sheetT').innerHTML=title;const I=$('#sheetIn');I.innerHTML=items.map((it,i)=>`<button class="item${it[2]?' danger':''}" data-i="${i}">${it[0]}</button>`).join('')+'<button class="item" style="text-align:center;border:0;color:#8b857a">取消</button>';
   $('#sheet').classList.add('on');I.querySelectorAll('.item').forEach(b=>b.onclick=()=>{$('#sheet').classList.remove('on');const it=items[b.dataset.i];it&&it[1]()})}
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')$('#sheet').classList.remove('on')};
-const ctlGet=()=>{const v=+localStorage.getItem('ctlTop');return v>=35&&v<=70?v:53};const ctlSet=v=>{v=Math.max(35,Math.min(70,Math.round(v/2)*2+(53%2)));if(v>70)v=69;document.documentElement.style.setProperty('--ctl-top',v+'dvh');localStorage.setItem('ctlTop',v);return v};ctlSet(ctlGet());
+const ctlGet=()=>{const v=+localStorage.getItem('ctlTop');return v>=35&&v<=70?v:53};const ctlSet=v=>{v=Math.max(35,Math.min(70,Math.round(v)));document.documentElement.style.setProperty('--ctl-top',v+'dvh');localStorage.setItem('ctlTop',v);return v};ctlSet(ctlGet());
 function ctlPanel(){go('study',false);renderStudy(false);let p=$('#ctlP');if(!p){p=document.createElement('div');p.id='ctlP';document.body.appendChild(p)}
   const draw=()=>{const v=ctlGet();p.innerHTML=`<b>按钮高度</b> <span>${v}%</span><div class="ctlr"><button class="pb" data-d="-2">▲ 上移</button><input type="range" min="35" max="70" step="2" value="${v}"><button class="pb" data-d="2">▼ 下移</button></div><div class="ctlr"><button class="pb" data-r>恢复默认 53%</button><button class="pb r" data-x>完成</button></div>`;
     p.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ctlSet(ctlGet()+ +b.dataset.d);draw()});p.querySelector('input').oninput=e=>{ctlSet(+e.target.value);p.querySelector('span').textContent=ctlGet()+'%'};p.querySelector('input').onchange=draw;
@@ -184,7 +184,7 @@ function editorHTML(w){return `<div class="two"><input class="w" data-k="word" p
 function bindEditor(d,w,live){d.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{w[i.dataset.k]=i.value;if(i.dataset.k==='word'){d.querySelector('[data-lv]').innerHTML=lvBadge(w,'tag')}if(i.dataset.k==='sentence')w.filled=false;if(live)save()})}
 // ================= enrichment helpers =================
 async function lite(w,force){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip&&(force||!w.ipaUK&&!w.ipaUS)){w.ipaUK=ip.uk;w.ipaUS=ip.us}
-  if(!w.hint||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=4}
+  if(!w.hint||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=5}
 // ================= photo import =================
 let shots=[];
 $('#pickBtn').onclick=()=>$('#pick').click();$('#shootBtn').onclick=()=>$('#shoot').click();
@@ -233,7 +233,7 @@ $('#runOcr').onclick=async()=>{if(!shots.length||importing)return;importing=true
         catch(e){lastErr=e.message;fellBack++;ents=null}}
       if(!ents)ents=await tessOCR(list[cur].f,cur,N);
       ents.forEach(e=>{const{flags,photo,ocrSentence,_sel,...x}=e;x.id=uid();x.status='new';x.v=2;got.push(x)})}
-    const before=allWords().length;const[gn,gm]=addNew(got);S.cur='__all';S.idx=Math.min(before,Math.max(0,allWords().length-1));save();
+    const before=allWords().length;const[gw,gm]=addNew(got),gn=gw.length;S.cur='__all';S.idx=Math.min(before,Math.max(0,allWords().length-1));save();
     shots.forEach(s=>URL.revokeObjectURL(s.url));shots=[];renderThumbs();$('#prog').style.display='none';
     toast(impMsg(gn,gm)+(fellBack?`（AI 失败 ${fellBack} 张，已改用本地识别：${lastErr.slice(0,40)}）`:''),fellBack?5000:2600);prefetchAll();hist.length=0;renderLib();go('lib',false)}
   catch(err){prog('识别失败：'+(err&&err.message||err)+'。请检查网络后重试，或手动添加。',0);$('#runOcr').style.display='block'}
@@ -253,10 +253,10 @@ async function parseImport(txt){txt=cleanTxt(txt);if(!txt)throw new Error('内�
   let d=txt;const m=txt.match(/#import=([\s\S]+)/);if(m)d=m[1];try{d=decodeURIComponent(d)}catch(e){}d=d.replace(/^\s*PZCK1\s*[:：]?/i,'').trim();
   if(/^[\[{]/.test(d))return mapItems(JSON.parse(d));let j;try{j=JSON.parse(b64uDec(d))}catch(e){throw new Error('代码不完整或被改动了，请改用短码（如 p4）')}return mapItems(j)}
 const wkey=w=>(w.word||'').trim().toLowerCase();
-function addNew(arr){const have=new Set(allWords().map(wkey)),ws=[];let skip=0;for(const x of arr){const k=wkey(x);if(!k||have.has(k)){skip++;continue}have.add(k);ws.push(x)}S.lib.push(...ws);return[ws.length,skip]}
+function addNew(arr){const have=new Set(allWords().map(wkey)),ws=[];let skip=0;for(const x of arr){const k=wkey(x);if(!k||have.has(k)){skip++;continue}have.add(k);ws.push(x)}S.lib.push(...ws);return[ws,skip]}
 const impMsg=(n,m)=>`已导入 ${n} 个`+(m?`，跳过 ${m} 个重复`:'');
 let impBusy=false;
-async function importItems(items,msg){if(impBusy)return;impBusy=true;setTimeout(()=>impBusy=false,1500);const before=allWords().length;const[n,m]=addNew(items.map(x=>({...x,id:uid(),status:'new',v:2})));S.cur='__all';S.idx=Math.min(before,Math.max(0,allWords().length-1));save();
+async function importItems(items,msg){if(impBusy)return;impBusy=true;setTimeout(()=>impBusy=false,1500);const before=allWords().length;const[ws,m]=addNew(items.map(x=>({...x,id:uid(),status:'new',v:2}))),n=ws.length;S.cur='__all';S.idx=Math.min(before,Math.max(0,allWords().length-1));save();
   toast(impMsg(n,m),3000);hist.length=0;renderLib();go('lib',false);
   for(const w of ws){try{await lite(w);if(!w.meaning)w.meaning=await Enrich.meaning(w.word.toLowerCase())}catch(e){}save()}prefetchAll();if(view==='study')renderStudy(false);if(view==='lib')renderLib();return ws.length}
 $('#pasteBtn').onclick=async()=>{if(impBusy)return;try{const items=await parseImport($('#pasteBox').value);$('#pasteBox').value='';await importItems(items)}catch(e){toast('无法识别：'+e.message,3500)}};
@@ -286,7 +286,7 @@ function fixData(){S.lib=Array.isArray(S.lib)?S.lib:[];const L=S.cats.filter(c=>
   const seen=new Set(),key=w=>w.id||w;const ord=[...S.cats.filter(c=>!c.parent).flatMap(p=>[p,...S.cats.filter(k=>k.parent===p.id)]),...S.cats.filter(c=>c.parent&&!S.cats.some(p=>p.id===c.parent))];
   ord.forEach(c=>{c.words=c.words.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true})});S.lib=S.lib.filter(w=>{if(seen.has(key(w)))return false;seen.add(key(w));return true});
   const sw=new Set(),dk=w=>{const k=wkey(w);if(!k)return true;if(sw.has(k))return false;sw.add(k);return true};ord.forEach(c=>c.words=c.words.filter(dk));S.lib=S.lib.filter(dk);save()}
-function migrate(){const old=allWords().filter(w=>!w.v||w.v<4);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
+function migrate(){const old=allWords().filter(w=>!w.v||w.v<5);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
   let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.status=w.status||'new';w.ocrIpa=w.ipa;need.push(w)}}));
   if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
 // ================= boot =================

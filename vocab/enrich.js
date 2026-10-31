@@ -32,7 +32,8 @@ async function ipa1(word){return cached('ipa3:'+word,async()=>{let uk='',us='',s
     if(Array.isArray(d)){for(const e of d)for(const p of e.phonetics||[]){if(!p.text)continue;if(/-uk/.test(p.audio||'')&&!uk)uk=norm(p.text);else if(/-us/.test(p.audio||'')&&!us)us=norm(p.text);else if(!uk)uk=norm(p.text)}if(uk||us)src='dictionaryapi.dev'}}
   const dropUS=!!us&&badIPA(us);if(badIPA(uk))uk='';if(badIPA(us))us='';
   if(!uk||!us){const L=await lex();const c=L.get(word);if(c){const cu=fixStress(c);if(!uk&&!us)src='CMUdict';if(!us&&uk){us=cu}else if(!uk&&!us){us=cu;uk=cmuToUK(cu)}else if(!uk)uk=cmuToUK(cu)}}
-  if(uk===us)us='';if(!uk&&!us)return null;return{uk,us,src}})}
+  if(uk&&(!us||us===uk)){const L=await lex();const c=L.get(word);if(c)us=fixStress(c)}
+  const pp=s=>{s=(s||'').replace(/ɡ/g,'g').replace(/iː$/,'i');const nv=(s.match(/aɪ|eɪ|ɔɪ|əʊ|oʊ|aʊ|[iɪeæʌəɐɑɒɔʊuɜa]/g)||[]).length;if(nv<=1)s=s.replace(/^[ˈˌ]/,'');return s};uk=pp(uk);us=pp(us);if(!uk&&!us)return null;return{uk,us,src}})}
 // ---------- 谐音 ----------
 const VOW=['aɪə','aʊə','eɪ','aɪ','ɔɪ','əʊ','oʊ','aʊ','ɪə','eə','ʊə','iː','uː','ɑː','ɔː','ɜː','i','ɪ','e','æ','ʌ','ə','ɒ','ɔ','ʊ','u','ɑ','a','o','ɐ','ɜ'];
 const CON=['tʃ','dʒ','p','b','t','d','k','g','f','v','θ','ð','s','z','ʃ','ʒ','h','m','n','ŋ','l','r','w','j','x'];
