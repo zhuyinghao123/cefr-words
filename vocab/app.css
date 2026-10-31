@@ -130,3 +130,5 @@ button,.gbtn,.rplay{touch-action:manipulation;-webkit-tap-highlight-color:transp
 #prev::before,#next::before{background:#7a705f1a!important}
 #prev:active::before,#next:active::before{background:#7a705f30!important}
 .fixbar .rplay{opacity:.92}
+.fixbar{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:transform .15s}
+.fixbar.dragging{transform:scale(1.08);filter:drop-shadow(0 6px 12px #0002)}

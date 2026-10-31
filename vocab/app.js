@@ -119,12 +119,28 @@ function sheet(items,title=''){$('#sheetT').innerHTML=title;const I=$('#sheetIn'
   $('#sheet').classList.add('on');I.querySelectorAll('.item').forEach(b=>b.onclick=()=>{$('#sheet').classList.remove('on');const it=items[b.dataset.i];it&&it[1]()})}
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')$('#sheet').classList.remove('on')};
 try{if(!localStorage.getItem('ctlV2')){const o=+localStorage.getItem('ctlTop');if(!o||o===53||o===55)localStorage.setItem('ctlTop',45);localStorage.setItem('ctlV2',1)}}catch(_){}
-const ctlGet=()=>{const v=+localStorage.getItem('ctlTop');return v>=35&&v<=70?v:45};const ctlSet=v=>{v=Math.max(35,Math.min(70,Math.round(v)));document.documentElement.style.setProperty('--ctl-top',v+'dvh');localStorage.setItem('ctlTop',v);return v};ctlSet(ctlGet());
+const ctlGet=()=>{const v=+localStorage.getItem('ctlTop');return v>=35&&v<=70?v:45};const ctlSet=v=>{if(ctlSet.r&&localStorage.getItem('ctlPos')){localStorage.removeItem('ctlPos');setTimeout(ctlApply)}v=Math.max(35,Math.min(70,Math.round(v)));document.documentElement.style.setProperty('--ctl-top',v+'dvh');localStorage.setItem('ctlTop',v);return v};ctlSet(ctlGet());
+// long-press (0.5s) the control group to drag it anywhere; saved as viewport fractions, clamped on screen
+const ctlPosGet=()=>{try{const o=JSON.parse(localStorage.getItem('ctlPos'));return o&&isFinite(o.x)&&isFinite(o.y)?o:null}catch(e){return null}};
+function ctlApply(){const F=$('#fixbar');if(!F)return;const o=ctlPosGet();if(!o){F.style.left=F.style.top='';F.classList.remove('moved');return}
+  const w=F.offsetWidth,h=F.offsetHeight,x=Math.max(4,Math.min(innerWidth-w-4,o.x*innerWidth)),y=Math.max(4,Math.min(innerHeight-h-4,o.y*innerHeight));F.style.setProperty('left',x+'px','important');F.style.setProperty('top',y+'px','important');F.classList.add('moved')}
+function ctlReset(){localStorage.removeItem('ctlPos');ctlSet(45);ctlApply();toast('按钮已恢复默认位置')}
+addEventListener('resize',()=>requestAnimationFrame(ctlApply));
+(()=>{const F=$('#fixbar');if(!F)return;let tm=0,drag=false,eat=false,sx=0,sy=0,ox=0,oy=0,pid=null;
+  F.addEventListener('pointerdown',e=>{eat=false;sx=e.clientX;sy=e.clientY;pid=e.pointerId;clearTimeout(tm);
+    tm=setTimeout(()=>{drag=true;eat=true;const r=F.getBoundingClientRect();ox=sx-r.left;oy=sy-r.top;F.classList.add('dragging');try{F.setPointerCapture(pid)}catch(_){}navigator.vibrate&&navigator.vibrate(15)},500)});
+  F.addEventListener('pointermove',e=>{if(!drag){if(Math.hypot(e.clientX-sx,e.clientY-sy)>10)clearTimeout(tm);return}e.preventDefault();
+    const w=F.offsetWidth,h=F.offsetHeight,x=Math.max(4,Math.min(innerWidth-w-4,e.clientX-ox)),y=Math.max(4,Math.min(innerHeight-h-4,e.clientY-oy));
+    F.style.setProperty('left',x+'px','important');F.style.setProperty('top',y+'px','important');F.classList.add('moved')});
+  const end=e=>{clearTimeout(tm);if(drag){drag=false;F.classList.remove('dragging');localStorage.setItem('ctlPos',JSON.stringify({x:F.offsetLeft/innerWidth,y:F.offsetTop/innerHeight}));toast('已保存按钮位置（⋯ 菜单可恢复默认）')}if(eat){e.stopPropagation();e.preventDefault()}};
+  F.addEventListener('pointerup',end,true);F.addEventListener('pointercancel',end,true);
+  F.addEventListener('click',e=>{if(eat){eat=false;e.stopPropagation();e.preventDefault()}},true);
+  F.addEventListener('contextmenu',e=>e.preventDefault());requestAnimationFrame(ctlApply);ctlSet.r=true})();
 function ctlPanel(){go('study',false);renderStudy(false);let p=$('#ctlP');if(!p){p=document.createElement('div');p.id='ctlP';document.body.appendChild(p)}
   const draw=()=>{const v=ctlGet();p.innerHTML=`<b>按钮高度</b> <span>${v}%</span><div class="ctlr"><button class="pb" data-d="-2">▲ 上移</button><input type="range" min="35" max="70" step="2" value="${v}"><button class="pb" data-d="2">▼ 下移</button></div><div class="ctlr"><button class="pb" data-r>恢复默认 45%</button><button class="pb r" data-x>完成</button></div>`;
     p.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ctlSet(ctlGet()+ +b.dataset.d);draw()});p.querySelector('input').oninput=e=>{ctlSet(+e.target.value);p.querySelector('span').textContent=ctlGet()+'%'};p.querySelector('input').onchange=draw;
     p.querySelector('[data-r]').onclick=()=>{ctlSet(45);draw()};p.querySelector('[data-x]').onclick=()=>{p.remove();toast('已保存按钮高度 '+ctlGet()+'%')}};draw()}
-const commonMenu=()=>[['↕️ 按钮高度',ctlPanel],['📷 拍照导入（可多张）',()=>{renderThumbs();go('photo')}],['✍️ 手动添加单词',()=>openManual()],['⚙️ 识别设置（AI / API Key）',openSet],['⬇️ 备份数据（导出 JSON）',backup],['⬆️ 恢复数据（导入 JSON）',()=>$('#restoreFile').click()]];
+const commonMenu=()=>[['↕️ 按钮高度',ctlPanel],['📍 恢复默认位置',ctlReset],['📷 拍照导入（可多张）',()=>{renderThumbs();go('photo')}],['✍️ 手动添加单词',()=>openManual()],['⚙️ 识别设置（AI / API Key）',openSet],['⬇️ 备份数据（导出 JSON）',backup],['⬆️ 恢复数据（导入 JSON）',()=>$('#restoreFile').click()]];
 $('#moreBtn').onclick=()=>{const w=curWord(),c=cat(S.cur);sheet([...(w?[['✏️ 编辑这个单词',()=>openManual(w)],['🔊 读例句',()=>saySent(w)]]:[]),...(c?[['📋 管理本分类单词',()=>openWords(c.id)]]:[]),...commonMenu()])};
 $('#libMore').onclick=()=>sheet(commonMenu());
 // ================= library =================
