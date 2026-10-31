@@ -104,7 +104,12 @@ document.addEventListener('click',e=>{if(!e.target.closest('#pop')&&!e.target.cl
 function sheet(items,title=''){$('#sheetT').innerHTML=title;const I=$('#sheetIn');I.innerHTML=items.map((it,i)=>`<button class="item${it[2]?' danger':''}" data-i="${i}">${it[0]}</button>`).join('')+'<button class="item" style="text-align:center;border:0;color:#8b857a">取消</button>';
   $('#sheet').classList.add('on');I.querySelectorAll('.item').forEach(b=>b.onclick=()=>{$('#sheet').classList.remove('on');const it=items[b.dataset.i];it&&it[1]()})}
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')$('#sheet').classList.remove('on')};
-const commonMenu=()=>[['📷 拍照导入（可多张）',()=>{renderThumbs();go('photo')}],['✍️ 手动添加单词',()=>openManual()],['⚙️ 识别设置（AI / API Key）',openSet],['⬇️ 备份数据（导出 JSON）',backup],['⬆️ 恢复数据（导入 JSON）',()=>$('#restoreFile').click()]];
+const ctlGet=()=>{const v=+localStorage.getItem('ctlTop');return v>=35&&v<=70?v:53};const ctlSet=v=>{v=Math.max(35,Math.min(70,Math.round(v/2)*2+(53%2)));if(v>70)v=69;document.documentElement.style.setProperty('--ctl-top',v+'dvh');localStorage.setItem('ctlTop',v);return v};ctlSet(ctlGet());
+function ctlPanel(){go('study',false);renderStudy(false);let p=$('#ctlP');if(!p){p=document.createElement('div');p.id='ctlP';document.body.appendChild(p)}
+  const draw=()=>{const v=ctlGet();p.innerHTML=`<b>按钮高度</b> <span>${v}%</span><div class="ctlr"><button class="pb" data-d="-2">▲ 上移</button><input type="range" min="35" max="70" step="2" value="${v}"><button class="pb" data-d="2">▼ 下移</button></div><div class="ctlr"><button class="pb" data-r>恢复默认 53%</button><button class="pb r" data-x>完成</button></div>`;
+    p.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ctlSet(ctlGet()+ +b.dataset.d);draw()});p.querySelector('input').oninput=e=>{ctlSet(+e.target.value);p.querySelector('span').textContent=ctlGet()+'%'};p.querySelector('input').onchange=draw;
+    p.querySelector('[data-r]').onclick=()=>{ctlSet(53);draw()};p.querySelector('[data-x]').onclick=()=>{p.remove();toast('已保存按钮高度 '+ctlGet()+'%')}};draw()}
+const commonMenu=()=>[['↕️ 按钮高度',ctlPanel],['📷 拍照导入（可多张）',()=>{renderThumbs();go('photo')}],['✍️ 手动添加单词',()=>openManual()],['⚙️ 识别设置（AI / API Key）',openSet],['⬇️ 备份数据（导出 JSON）',backup],['⬆️ 恢复数据（导入 JSON）',()=>$('#restoreFile').click()]];
 $('#moreBtn').onclick=()=>{const w=curWord(),c=cat(S.cur);sheet([...(w?[['✏️ 编辑这个单词',()=>openManual(w)],['🔊 读例句',()=>saySent(w)]]:[]),...(c?[['📋 管理本分类单词',()=>openWords(c.id)]]:[]),...commonMenu()])};
 $('#libMore').onclick=()=>sheet(commonMenu());
 // ================= library =================
@@ -298,3 +303,8 @@ if('serviceWorker'in navigator){const had=!!navigator.serviceWorker.controller;l
   navigator.serviceWorker.register('sw.js',{scope:'./'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})})}
 
 $('#catName').onclick=()=>sheet([['全部单词（'+allWords().length+'）',()=>studyCat('__all')],...ordered().map(c=>[(c.parent?'　└ ':'')+esc(c.name)+'（'+count(c)+'）',()=>studyCat(c.id)])]);
+// study swipe: left=next, right=prev (no delete gesture here)
+(()=>{const V=$('#v-study');let x0=null,y0=0,t0=0;
+V.addEventListener('touchstart',e=>{if(e.target.closest('#fixbar,.nav,.acts,button,input,textarea,.pop,.sheet')){x0=null;return}x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now()},{passive:true});
+V.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;
+  if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*2)return;const d=dx<0?1:-1;const C=$('#card');step(d);C.classList.remove('sl','sr');void C.offsetWidth;C.classList.add(d>0?'sl':'sr')},{passive:true})})();
