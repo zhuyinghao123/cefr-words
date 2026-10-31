@@ -91,3 +91,4 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 @keyframes sl{from{transform:translateX(40px);opacity:.3}to{transform:none;opacity:1}}@keyframes sr{from{transform:translateX(-40px);opacity:.3}to{transform:none;opacity:1}}
 #card.sl{animation:sl .22s ease-out}#card.sr{animation:sr .22s ease-out}
 html,body{overscroll-behavior-x:none}#v-study{touch-action:pan-y}
+.lv{position:static;display:inline-block;vertical-align:top;margin-left:6px;font-size:12px}.lvsrc{display:block;margin:2px 0 0}.ol .lvsrc,.row .lvsrc{display:inline}
