@@ -311,7 +311,7 @@ V.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[
 
 // fit study card: word on one line, whole card above the 还不会/记住了 bar, no inner scroll
 let fitting=false;function fitCard(){const C=$('#card'),A=document.querySelector('#v-study .acts');if(!C||fitting||view!=='study')return;fitting=true;
-  const W=C.querySelector('.word'),T=C.querySelector('.wt');C.style.zoom='';if(W&&T){W.style.fontSize='';let f=parseFloat(getComputedStyle(W).fontSize);const avail=()=>W.parentElement.clientWidth-((W.querySelector('.lv')||{}).offsetWidth||0)-14;while(f>20&&T.scrollWidth>avail()){f-=2;W.style.fontSize=f+'px'}}
-  const lim=(A?A.getBoundingClientRect().top:innerHeight)-8;let z=1;while(z>.62&&C.getBoundingClientRect().bottom>lim){z-=.04;C.style.zoom=z}fitting=false}
+  const W=C.querySelector('.word'),T=C.querySelector('.wt');C.style.zoom='';C.style.marginLeft='';if(W&&T){W.style.fontSize='';let f=parseFloat(getComputedStyle(W).fontSize);const avail=()=>W.parentElement.clientWidth-((W.querySelector('.lv')||{}).offsetWidth||0)-14;while(f>20&&T.getBoundingClientRect().width>avail()){f-=2;W.style.fontSize=f+'px'}}
+  const lim=(A?A.getBoundingClientRect().top:innerHeight)-8;let z=1;while(z>.62&&C.getBoundingClientRect().bottom>lim){z-=.04;C.style.zoom=z;C.style.marginLeft=(62/z)+'px'}fitting=false}
 addEventListener('resize',()=>requestAnimationFrame(fitCard));
 try{new ResizeObserver(()=>requestAnimationFrame(fitCard)).observe($('#card'))}catch(_){}
