@@ -20,7 +20,7 @@ const badIPA=x=>!x||/[^aeiouɑɔəɜɪʊæʌɒɐɛiː]ː|ː{2}/.test(x)||!/[aeio
 async function ipa(word){word=word.trim().toLowerCase();if(IPA_OV[word])return IPA_OV[word];
   const parts=word.split(/[\s-]+/).filter(Boolean);if(parts.length>1){const r=await Promise.all(parts.map(p=>ipa1(p)));if(r.some(x=>!x))return null;
     const uk=r.map(x=>x.uk||x.us).join(' '),us=r.map(x=>x.us||x.uk).join(' ');return{uk,us:us===uk?'':us,src:r[0].src}}return ipa1(word)}
-async function ipa1(word){return cached('ipa2:'+word,async()=>{let uk='',us='',src='';
+async function ipa1(word){return cached('ipa3:'+word,async()=>{let uk='',us='',src='';
   const j=await getJSON(`https://en.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(word)}&prop=wikitext&format=json&origin=*`);
   const t=j&&j.parse&&j.parse.wikitext&&j.parse.wikitext['*'];
   if(t){const en=t.split(/\n==(?!=)/).find(x=>/^English==/.test(x))||t;
@@ -31,7 +31,7 @@ async function ipa1(word){return cached('ipa2:'+word,async()=>{let uk='',us='',s
   if(!uk&&!us){const d=await getJSON('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word));
     if(Array.isArray(d)){for(const e of d)for(const p of e.phonetics||[]){if(!p.text)continue;if(/-uk/.test(p.audio||'')&&!uk)uk=norm(p.text);else if(/-us/.test(p.audio||'')&&!us)us=norm(p.text);else if(!uk)uk=norm(p.text)}if(uk||us)src='dictionaryapi.dev'}}
   const dropUS=!!us&&badIPA(us);if(badIPA(uk))uk='';if(badIPA(us))us='';
-  if(!uk||!us){const L=await lex();const c=L.get(word);if(c){const cu=fixStress(c);if(!uk&&!us)src='CMUdict';if(!us&&uk){if(dropUS)us=cu}else if(!uk&&!us){us=cu;uk=cmuToUK(cu)}else if(!uk)uk=cmuToUK(cu)}}
+  if(!uk||!us){const L=await lex();const c=L.get(word);if(c){const cu=fixStress(c);if(!uk&&!us)src='CMUdict';if(!us&&uk){us=cu}else if(!uk&&!us){us=cu;uk=cmuToUK(cu)}else if(!uk)uk=cmuToUK(cu)}}
   if(uk===us)us='';if(!uk&&!us)return null;return{uk,us,src}})}
 // ---------- 谐音 ----------
 const VOW=['aɪə','aʊə','eɪ','aɪ','ɔɪ','əʊ','oʊ','aʊ','ɪə','eə','ʊə','iː','uː','ɑː','ɔː','ɜː','i','ɪ','e','æ','ʌ','ə','ɒ','ɔ','ʊ','u','ɑ','a','o','ɐ','ɜ'];
@@ -46,7 +46,7 @@ const R_CH=f=>/^(in|en|an|ing|eng|ang|un)$/.test(f)?'人':/^(i|ei|ai|e)$/.test(f
 function syl(ini,fin){if(ini==='r')return R_CH(fin);const c=[ini+fin,...(ALT[fin]||[]).map(f=>ini+f)];if(ini==='')c.unshift({i:'yi',u:'wu',in:'yin',ing:'ying',ong:'weng',un:'wen'}[fin]||fin);
   if(ini==='w'&&fin==='ai')c.unshift('wei');if(ini===''&&fin==='e')c.unshift('a');if(ini==='y'){c.unshift('y'+(fin==='i'?'i':fin))}if(ini==='w'&&fin==='u')c.unshift('wu');if(ini==='h'&&fin==='i')c.unshift('xi');if(ini==='k'&&fin==='i')c.unshift('ki','qi');if(ini==='g'&&fin==='i')c.unshift('ji');
   for(const s of c)if(CH[s])return CH[s];return (SOLO[ini]||'')+(CH[fin]||'')}
-const XY_OV={greenhouse:'格林豪斯',deforestation:'迪佛瑞斯泰神','fossil fuel':'佛扫 飞油尔',erosion:'衣肉神',emission:'衣米神',blaze:'布雷兹',conflagration:'康夫勒格瑞神'};
+const XY_OV={greenhouse:'格林豪斯',deforestation:'迪佛瑞斯泰神','fossil fuel':'佛扫 飞油尔',erosion:'衣肉神',emission:'衣米神',blaze:'布雷兹',dispose:'迪斯波兹',conflagration:'康夫勒格瑞神'};
 function xieyinW(word,ip){const w=(word||'').trim().toLowerCase();if(XY_OV[w])return XY_OV[w];if(!ip)return'';const ps=ip.split(/\s+/).filter(Boolean);return ps.map(xieyin).join(' ')}
 function xieyin(ip){if(!ip)return'';let s=ip.normalize('NFD').replace(/n\u0329/g,'ən').replace(/l\u0329/g,'əl').replace(/m\u0329/g,'əm').replace(/[\u0300-\u036f]/g,'').replace(/[ˈˌ\/\[\]()ʰ‿.ˑ̩ ]/g,'').replace(/ɡ/g,'g').replace(/ɹ/g,'r').replace(/ɛ/g,'e').replace(/ɚ/g,'ər').replace(/ɝ/g,'ɜː');
   const T=[];while(s){const v=VOW.find(x=>s.startsWith(x));if(v){T.push({v});s=s.slice(v.length);continue}const c=CON.find(x=>s.startsWith(x));if(c)T.push({c});s=s.slice(c?c.length:1)}

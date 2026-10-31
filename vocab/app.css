@@ -74,3 +74,9 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 .pop .pz{font-size:18px;margin-top:8px}
 
 .olh{display:flex;justify-content:space-between;align-items:center;margin:18px 4px 4px;color:#8b857a;font-size:14px}.olb{background:none;border:0;color:#a5452f;font-size:14px;padding:6px 0}.ol{list-style:none;margin:0;padding:0 4px}.ol li{padding:9px 0;border-bottom:1px solid #e8e2d6;font-size:16px}.ol li span{color:#8b857a;font-size:13px}
+
+.olact{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0 8px}.olact .pb{height:32px;padding:0 12px;font-size:13px}
+.ol li{position:relative;display:flex;align-items:center;gap:8px;overflow:hidden}.ol li .sw{flex:1;min-width:0;transition:transform .2s}
+.swdel{display:none;background:#d9443a;color:#fff;border:0;border-radius:8px;height:36px;padding:0 14px;font-size:14px;flex:none}
+.open>.swdel{display:block}
+.lvsrc{font-size:11px;color:#8a8378;margin-left:4px;text-decoration:underline}
