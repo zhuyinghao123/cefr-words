@@ -18,7 +18,8 @@ const cat=id=>S.cats.find(c=>c.id===id),kids=id=>S.cats.filter(c=>c.parent===id)
 const count=c=>c.words.length+(c.parent?0:kids(c.id).reduce((a,k)=>a+k.words.length,0));
 const studyWords=()=>{if(S.cur==='__all')return ordered().flatMap(c=>c.words);const c=cat(S.cur);if(!c)return[];return c.parent?c.words:[...c.words,...kids(c.id).flatMap(k=>k.words)]};
 const allWords=()=>S.cats.flatMap(c=>c.words);
-function ordered(){const r=[];S.cats.filter(c=>!c.parent).forEach(p=>{r.push(p);kids(p.id).forEach(k=>r.push(k))});return r}
+function ordered(){const r=[];S.cats.filter(c=>!c.parent&&!c.loose).forEach(p=>{r.push(p);kids(p.id).forEach(k=>r.push(k))});const L=loose();if(L)r.push(L);return r}
+const loose=()=>S.cats.find(c=>c.loose);function ensureLoose(){let L=loose();if(!L){L={id:'__loose',name:'未分类',parent:null,loose:true,words:[]};S.cats.push(L)}return L}
 function newCat(name,parent=null){const c={id:uid(),name,parent,words:[]};S.cats.push(c);return c}
 function moveIn(arr,item,ni){arr.splice(arr.indexOf(item),1);arr.splice(ni,0,item)}
 function lvBadge(w,cls='lv'){const l=Enrich.level(w.word||'');const u='https://dictionary.cambridge.org/dictionary/english/'+encodeURIComponent(l.lemma||w.word);
@@ -70,50 +71,61 @@ function sentHTML(s,word){const re=stemRe(word);return esc(s).split(/(\s+)/).map
   return `${m[1]}<span class="w${re.test(m[2])?' t':''}" data-w="${m[2].toLowerCase().replace(/[’'].*$/,'')}">${m[2]}</span>${m[3]}`}).join('')}
 const ST={new:'新词',learning:'学习中',known:'已掌握'};
 function renderStudy(speak){const ws=studyWords(),C=$('#card');const cc=cat(S.cur);$('#catName').textContent=(S.cur==='__all'?'全部单词':cc?cc.name:'全部单词')+' ▾';
-  if(!ws.length){C.innerHTML=`<div class="acc"></div><div class="head" style="padding:60px 24px"><div class="word" style="font-size:34px">还没有单词</div><p class="muted" style="margin-top:16px">点下方红色相机按钮拍照导入，<br>或在「词库」里手动添加。</p></div>`;return}
+  $('#fixbar').style.visibility=ws.length?'visible':'hidden';if(!ws.length){$('#cnt').textContent='';C.innerHTML=`<div class="acc"></div><div class="head" style="padding:60px 24px"><div class="word" style="font-size:34px">还没有单词</div><p class="muted" style="margin-top:16px">点下方红色相机按钮拍照导入，<br>或在「词库」里手动添加。</p></div>`;return}
   const w=curWord();const ipa=w.ipaUK||w.ipaUS?[w.ipaUK&&`<span><small>英</small>/${esc(w.ipaUK)}/</span>`,w.ipaUS&&`<span><small>美</small>/${esc(w.ipaUS)}/</span>`].filter(Boolean).join(''):esc(w.ipa||'');
   C.innerHTML=`<div class="acc"></div><div class="head"><div class="word">${esc(w.word)}${lvBadge(w)}</div><div class="ipa">${ipa}</div>
    <div class="mean">${w.pos?`<span class="pos">${esc(w.pos)}</span>`:''}${esc(w.meaning)}</div>${w.hint?`<span class="pill">谐音 ${esc(w.hint)}</span>`:''}</div>
    <div class="ex"><div class="exh"><span>例句 · 点不认识的词${w.filled?'<span class="tag">补全</span>':''}</span><button class="gbtn" id="spS" aria-label="读例句">${ICON.spk}</button></div>
-   <div class="sent">${sentHTML(w.sentence||'',w.word)}</div>${w.trans?`<div class="trans">${esc(w.trans)}</div>`:''}
-   ${w.extra?`<div class="extra"><b>书上还写了</b>${esc(w.extra)}</div>`:''}</div>
-   <div class="cbar"><button class="rplay" id="spW" aria-label="读单词">${ICON.spk}</button><button class="gbtn" id="prev" aria-label="上一个">${ICON.l}</button><button class="gbtn" id="next" aria-label="下一个">${ICON.r}</button>
-   <span class="cnt">${S.idx+1} / ${ws.length}　${ST[w.status||'new']}</span></div>`;
-  $('#spW').onclick=()=>sayWord(w);$('#spS').onclick=()=>saySent(w);$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+   <div class="sent">${sentHTML(w.sentence||'',w.word)}</div>${w.sentence?`<div class="trans" id="trans">${w.trans?esc(w.trans):'<span class="muted">翻译中…</span>'}</div>`:''}
+   ${w.extra?`<div class="extra"><b>书上还写了</b>${esc(w.extra)}</div>`:''}</div>`;$('#cnt').textContent=`${S.idx+1} / ${ws.length}　${ST[w.status||'new']}`;$('#spS').onclick=()=>saySent(w);
+  if(w.sentence&&!w.trans)autoTrans(w);
   C.querySelectorAll('.sent .w').forEach(s=>s.onclick=e=>{e.stopPropagation();wordPop(s)});
   const n=ws.length,nx=ws[(S.idx+1)%n],pv=ws[(S.idx-1+n)%n];
   keepPool([wordURL(w.word),w.sentence&&sentURL(w.sentence),wordURL(nx.word),nx.sentence&&sentURL(nx.sentence),wordURL(pv.word)].filter(Boolean));
   if(speak)sayWord(w)}
+const trBusy=new Set();async function autoTrans(w){if(trBusy.has(w.id))return;trBusy.add(w.id);let t='';try{t=await Enrich.translate(w.sentence)}catch(e){}trBusy.delete(w.id);
+  if(t){w.trans=t;save()}if(curWord()===w&&$('#trans'))$('#trans').innerHTML=t?esc(t):'<span class="muted">翻译暂时失败，联网后会自动重试</span>'}
+$('#spW').innerHTML=ICON.spk;$('#prev').innerHTML=ICON.l;$('#next').innerHTML=ICON.r;
+$('#spW').onclick=()=>sayWord(curWord());$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
 function step(d){const n=studyWords().length;if(!n)return;S.idx=(S.idx+d+n)%n;save();renderStudy(true)}
 function mark(st){const w=curWord();if(!w)return;w.status=st;save();step(1)}
 $('#dunno').onclick=()=>mark('learning');$('#gotit').onclick=()=>mark('known');
 async function wordPop(span){document.querySelectorAll('.sent .w.on').forEach(x=>x.classList.remove('on'));span.classList.add('on');const raw=span.dataset.w;const lem=CEFR.lemma(raw);
   play(wordURL(raw),raw);const P=$('#pop');P.style.display='block';P.innerHTML=`<span class="pw">${esc(raw)}</span><span class="pi" id="pi"></span> ${lvBadge({word:raw},'tag')}<div class="muted" id="pm" style="margin-top:6px">查询中…</div>`;
-  const [ip,m]=await Promise.all([Enrich.ipa(lem),Enrich.meaning(lem)]);if(P.style.display==='none')return;
-  $('#pi').textContent=ip?'/'+(ip.uk||ip.us)+'/':'';$('#pm').textContent=(lem!==raw?`原形 ${lem}：`:'')+(m||'暂无释义')}
+  const known=allWords().find(x=>x.word.toLowerCase()===raw||x.word.toLowerCase()===lem);
+  if(known){$('#pi').textContent=(known.ipaUK||known.ipaUS)?'/'+(known.ipaUK||known.ipaUS)+'/':'';$('#pm').innerHTML=`<div class="pz">${esc((known.pos?known.pos+' ':'')+known.meaning)}</div>`;return}
+  const [ip,m]=await Promise.all([Enrich.ipa(lem).catch(()=>null),Enrich.meaning(lem).catch(()=>'')]);if(P.style.display==='none'||!span.classList.contains('on'))return;
+  $('#pi').textContent=ip?'/'+(ip.uk||ip.us)+'/':'';$('#pm').innerHTML=`<div class="pz">${esc(m||'暂无释义（请检查网络）')}</div>`+(lem!==raw?`<div class="muted" style="font-size:13px">原形 ${esc(lem)}</div>`:'')}
 document.addEventListener('click',e=>{if(!e.target.closest('#pop')&&!e.target.closest('.sent .w')){$('#pop').style.display='none';document.querySelectorAll('.sent .w.on').forEach(x=>x.classList.remove('on'))}});
 // ================= sheet menu =================
-function sheet(items){const I=$('#sheetIn');I.innerHTML=items.map((it,i)=>`<button class="item" data-i="${i}">${it[0]}</button>`).join('')+'<button class="item" style="text-align:center;border:0;color:#8b857a">取消</button>';
+function sheet(items,title=''){$('#sheetT').innerHTML=title;const I=$('#sheetIn');I.innerHTML=items.map((it,i)=>`<button class="item${it[2]?' danger':''}" data-i="${i}">${it[0]}</button>`).join('')+'<button class="item" style="text-align:center;border:0;color:#8b857a">取消</button>';
   $('#sheet').classList.add('on');I.querySelectorAll('.item').forEach(b=>b.onclick=()=>{$('#sheet').classList.remove('on');const it=items[b.dataset.i];it&&it[1]()})}
 $('#sheet').onclick=e=>{if(e.target.id==='sheet')$('#sheet').classList.remove('on')};
-const commonMenu=()=>[['📷 拍照导入（可多张）',()=>{renderThumbs();go('photo')}],['✍️ 手动添加单词',()=>openManual()],['⬇️ 备份数据（导出 JSON）',backup],['⬆️ 恢复数据（导入 JSON）',()=>$('#restoreFile').click()]];
+const commonMenu=()=>[['📷 拍照导入（可多张）',()=>{renderThumbs();go('photo')}],['✍️ 手动添加单词',()=>openManual()],['⚙️ 识别设置（AI / API Key）',openSet],['⬇️ 备份数据（导出 JSON）',backup],['⬆️ 恢复数据（导入 JSON）',()=>$('#restoreFile').click()]];
 $('#moreBtn').onclick=()=>{const w=curWord(),c=cat(S.cur);sheet([...(w?[['✏️ 编辑这个单词',()=>openManual(w)],['🔊 读例句',()=>saySent(w)]]:[]),...(c?[['📋 管理本分类单词',()=>openWords(c.id)]]:[]),...commonMenu()])};
 $('#libMore').onclick=()=>sheet(commonMenu());
 // ================= library =================
 function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered();
   if(!all.length)L.innerHTML='<p class="muted">先新建一个大类吧</p>';
+  const A=document.createElement('div');A.className='row'+(S.cur==='__all'?' sel':'');A.innerHTML=`<span class="drag" style="visibility:hidden">☰</span><div class="t"><b>📚 全部单词</b><small>${allWords().length} 词</small></div><button class="pb r" style="height:34px;padding:0 10px;font-size:13px">学全部</button>`;A.querySelector('button').onclick=()=>studyCat('__all');L.appendChild(A);
   all.forEach(c=>{const d=document.createElement('div');d.className='row'+(c.parent?' child':'')+(c.id===S.cur?' sel':'');d.dataset.id=c.id;
+    if(c.loose){d.innerHTML=`<span class="drag" style="visibility:hidden">☰</span><div class="t"><b>📥 未分类（新导入）</b><small>${count(c)} 词</small></div><button class="pb r" style="height:34px;padding:0 10px;font-size:13px" data-a="study">学这个类</button><button class="mini" data-a="manage">⋯</button>`;
+      d.querySelectorAll('button').forEach(b=>b.onclick=()=>b.dataset.a==='study'?studyCat(c.id):openWords(c.id));L.appendChild(d);return}
     d.innerHTML=`<span class="drag">☰</span><div class="t"><b>${esc(c.name)}</b><small>${count(c)} 词</small></div>
     <button class="pb r" style="height:34px;padding:0 10px;font-size:13px" data-a="study">学这个类</button><button class="mini" data-a="up">↑</button><button class="mini" data-a="dn">↓</button>${c.parent?'':'<button class="mini" data-a="sub" title="新建子类">＋</button>'}<button class="mini" data-a="more">⋯</button>`;
     d.querySelector('.t').onclick=()=>{S.cur=c.id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)};
     d.querySelectorAll('button').forEach(b=>b.onclick=()=>catAct(c,b.dataset.a));L.appendChild(d)});
-  enableDrag(L,(from,to)=>{const a=cat(from),b=cat(to);if(!a||!b||(a.parent||null)!==(b.parent||null))return toast('只能在同级内拖动');moveIn(S.cats,a,S.cats.indexOf(b));save();renderLib()})}
+  enableDrag(L,(from,to)=>{const a=cat(from),b=cat(to);if(!a||!b||a.loose||b.loose||(a.parent||null)!==(b.parent||null))return toast('只能在同级内拖动');moveIn(S.cats,a,S.cats.indexOf(b));save();renderLib()})}
 function studyCat(id){S.cur=id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)}
 function catAct(c,a){if(a==='study')return studyCat(c.id);
-  if(a==='up'||a==='dn'){const sib=S.cats.filter(x=>(x.parent||null)===(c.parent||null));const i=sib.indexOf(c),j=i+(a==='up'?-1:1);if(j<0||j>=sib.length)return;moveIn(S.cats,c,S.cats.indexOf(sib[j]));save();renderLib()}
+  if(a==='up'||a==='dn'){const sib=S.cats.filter(x=>!x.loose&&(x.parent||null)===(c.parent||null));const i=sib.indexOf(c),j=i+(a==='up'?-1:1);if(j<0||j>=sib.length)return;moveIn(S.cats,c,S.cats.indexOf(sib[j]));save();renderLib()}
   else if(a==='sub'){const n=prompt('子类名称');if(n&&n.trim()){newCat(n.trim(),c.id);save();renderLib()}}
   else if(a==='more')sheet([['📋 管理单词',()=>openWords(c.id)],['✏️ 重命名',()=>{const n=prompt('新名称',c.name);if(n){c.name=n;save();renderLib()}}],
-    ['🗑 删除分类',()=>{if(!confirm(`删除「${c.name}」${c.parent?'':'及其子类'}和全部单词？`))return;const ids=[c.id,...kids(c.id).map(k=>k.id)];S.cats=S.cats.filter(x=>!ids.includes(x.id));if(ids.includes(S.cur))S.cur=(S.cats[0]||{}).id||null;save();renderLib()}]])}
+    ['🗑 删除分类',()=>delCat(c),1]])}
+function delCat(c){const ks=c.parent?[]:kids(c.id);const n=count(c);
+  const title=`<b>删除「${esc(c.name)}」？</b>`+(ks.length?`这是大类，下面的 ${ks.length} 个子类（${ks.map(k=>esc(k.name)).join('、')}）也会一起删除。`:'')+`共 ${n} 个单词。`;
+  const go2=keep=>{const ids=[c.id,...ks.map(k=>k.id)];if(keep){const L=ensureLoose();[c,...ks].forEach(x=>L.words.push(...x.words))}S.cats=S.cats.filter(x=>!ids.includes(x.id));if(ids.includes(S.cur))S.cur='__all';S.idx=0;save();renderLib();toast(keep?`已删除分类，${n} 个单词移到「未分类」`:`已删除分类和 ${n} 个单词`)};
+  sheet([[ks.length?'只删分类（含子类），保留单词':'只删分类，保留单词',()=>go2(true)],[ks.length?'分类和单词一起删（含子类）':'分类和单词一起删',()=>{if(confirm(`确定永久删除 ${n} 个单词？`))go2(false)},1]],title)}
 $('#addParent').onclick=()=>{const n=prompt('大类名称');if(n&&n.trim()){const c=newCat(n.trim());if(!S.cur)S.cur=c.id;save();renderLib()}};
 function enableDrag(list,done){list.querySelectorAll('.drag').forEach(h=>{h.onpointerdown=e=>{const row=h.closest('.row');row.style.opacity=.5;h.setPointerCapture(e.pointerId);
   h.onpointerup=ev=>{row.style.opacity='';h.onpointerup=null;const el=document.elementFromPoint(ev.clientX,ev.clientY);const t=el&&el.closest('.row');if(t&&t!==row)done(row.dataset.id,t.dataset.id)}}})}
@@ -122,19 +134,21 @@ function ensureCat(){if(!S.cats.length){const c=newCat('我的单词');S.cur=c.i
 // ================= words of a category =================
 let wCat=null,wMode=null,wSel=new Set();
 function openWords(id){wCat=id;wMode=null;wSel.clear();renderWords();go('words')}
-function renderWords(){const c=cat(wCat);if(!c)return;$('#wTitle').textContent=c.name;const L=$('#wList');L.innerHTML=c.words.length?'':'<p class="muted">这个分类自身没有单词（子类单词请到子类里管理）</p>';
+function renderWords(){const c=cat(wCat);if(!c)return;$('#wTitle').textContent=c.loose?'未分类':c.name;const L=$('#wList');L.innerHTML=c.words.length?'':(c.loose?'<p class="muted">新导入的单词会先放在这里。点「多选加入分类」把它们放进分类。</p>':'<p class="muted">这个分类自身没有单词（子类单词请到子类里管理）</p>');
   $('#wOkWrap').innerHTML=wMode?'<button class="ok" id="wOk">✓</button>':'';if(wMode)$('#wOk').onclick=wFinish;
-  $('#wDelMode').classList.toggle('r',wMode==='del');$('#wEditMode').classList.toggle('r',wMode==='edit');
+  $('#wDelMode').classList.toggle('r',wMode==='del');$('#wMoveMode').classList.toggle('r',wMode==='move');$('#wEditMode').classList.toggle('r',wMode==='edit');
   c.words.forEach((w,i)=>{if(wMode==='edit'){const d=document.createElement('div');d.className='ecard';d.innerHTML=`<div class="f">${editorHTML(w)}</div>`;L.appendChild(d);bindEditor(d,w,true);return}
     const d=document.createElement('div');d.className='row'+(wSel.has(w.id)?' sel':'');d.dataset.id=w.id;
-    d.innerHTML=`${wMode==='del'?`<span class="chk${wSel.has(w.id)?' on':''}">✓</span>`:'<span class="drag">☰</span>'}<div class="t"><b>${esc(w.word)}</b> ${lvBadge(w,'tag')}<div class="sub">${esc(w.pos)} ${esc(w.meaning)}${w.hint?'　谐音 '+esc(w.hint):''}</div></div>${wMode?'':'<button class="mini" data-a="-1">↑</button><button class="mini" data-a="1">↓</button>'}`;
-    if(wMode==='del')d.onclick=()=>{wSel.has(w.id)?wSel.delete(w.id):wSel.add(w.id);renderWords()};
+    d.innerHTML=`${wMode==='del'||wMode==='move'?`<span class="chk${wSel.has(w.id)?' on':''}">✓</span>`:'<span class="drag">☰</span>'}<div class="t"><b>${esc(w.word)}</b> ${lvBadge(w,'tag')}<div class="sub">${esc(w.pos)} ${esc(w.meaning)}${w.hint?'　谐音 '+esc(w.hint):''}</div></div>${wMode?'':'<button class="mini" data-a="-1">↑</button><button class="mini" data-a="1">↓</button>'}`;
+    if(wMode==='del'||wMode==='move')d.onclick=()=>{wSel.has(w.id)?wSel.delete(w.id):wSel.add(w.id);renderWords()};
     d.querySelectorAll('button').forEach(b=>b.onclick=()=>{const j=i+ +b.dataset.a;if(j<0||j>=c.words.length)return;moveIn(c.words,w,j);save();renderWords()});L.appendChild(d)});
   if(!wMode)enableDrag(L,(f,t)=>{const a=c.words.find(x=>x.id===f),b=c.words.find(x=>x.id===t);moveIn(c.words,a,c.words.indexOf(b));save();renderWords()})}
+$('#wMoveMode').onclick=()=>{wMode=wMode==='move'?null:'move';wSel.clear();renderWords()};
 $('#wDelMode').onclick=()=>{wMode=wMode==='del'?null:'del';wSel.clear();renderWords()};
 $('#wEditMode').onclick=()=>{wMode=wMode==='edit'?null:'edit';renderWords()};
 $('#wFix').onclick=async()=>{const c=cat(wCat);toast('正在补全…',60000);for(const w of c.words)await lite(w,true);save();renderWords();toast('已补全音标、谐音和等级')};
-function wFinish(){const c=cat(wCat);if(wMode==='del'&&wSel.size){if(!confirm(`删除选中的 ${wSel.size} 个单词？`))return;c.words=c.words.filter(w=>!wSel.has(w.id))}wMode=null;wSel.clear();save();renderWords();toast('已完成')}
+function wFinish(){const c=cat(wCat);if(wMode==='move'&&wSel.size){const targets=ordered().filter(x=>x.id!==c.id&&!x.loose);if(!targets.length)return toast('请先在词库新建分类');
+  return sheet(targets.map(t=>[(t.parent?'　└ ':'')+esc(t.name),()=>{const mv=c.words.filter(w=>wSel.has(w.id));c.words=c.words.filter(w=>!wSel.has(w.id));t.words.push(...mv);wMode=null;wSel.clear();save();renderWords();toast(`已把 ${mv.length} 个词加入「${t.name}」`)}]),'<b>加入到哪个分类？</b>')}if(wMode==='del'&&wSel.size){if(!confirm(`删除选中的 ${wSel.size} 个单词？`))return;c.words=c.words.filter(w=>!wSel.has(w.id))}wMode=null;wSel.clear();save();renderWords();toast('已完成')}
 // ================= shared editor =================
 function editorHTML(w){return `<div class="two"><input class="w" data-k="word" placeholder="单词" value="${esc(w.word)}"><span data-lv style="align-self:center">${lvBadge(w,'tag')}</span></div>
  <div class="two"><div style="flex:1"><label>英式音标</label><input data-k="ipaUK" value="${esc(w.ipaUK||'')}"></div><div style="flex:1"><label>美式音标</label><input data-k="ipaUS" value="${esc(w.ipaUS||'')}"></div></div>
@@ -151,7 +165,7 @@ async function lite(w,force){const ip=await Enrich.ipa(w.word.toLowerCase());if(
 let shots=[];
 $('#pickBtn').onclick=()=>$('#pick').click();$('#shootBtn').onclick=()=>$('#shoot').click();
 ['pick','shoot'].forEach(id=>$('#'+id).onchange=e=>{for(const f of e.target.files)shots.push({f,url:URL.createObjectURL(f)});e.target.value='';renderThumbs()});
-function renderThumbs(){const T=$('#thumbs');T.innerHTML=shots.map((s,i)=>`<div class="th"><img src="${s.url}"><span class="n">${i+1}</span><button class="x" data-x="${i}">✕</button><div class="mv"><button data-m="${i}" data-d="-1">‹</button><button data-m="${i}" data-d="1">›</button></div></div>`).join('');
+function renderThumbs(){showMode();const T=$('#thumbs');T.innerHTML=shots.map((s,i)=>`<div class="th"><img src="${s.url}"><span class="n">${i+1}</span><button class="x" data-x="${i}">✕</button><div class="mv"><button data-m="${i}" data-d="-1">‹</button><button data-m="${i}" data-d="1">›</button></div></div>`).join('');
   T.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{URL.revokeObjectURL(shots[b.dataset.x].url);shots.splice(+b.dataset.x,1);renderThumbs()});
   T.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const i=+b.dataset.m,j=i+ +b.dataset.d;if(j<0||j>=shots.length)return;[shots[i],shots[j]]=[shots[j],shots[i]];renderThumbs()});
   $('#runOcr').style.display=shots.length?'block':'none';$('#runOcr').textContent=`开始识别（${shots.length} 张）`}
@@ -160,23 +174,61 @@ function prog(t,p){$('#progT').textContent=t;$('#progB').style.width=Math.round(
 async function prep(f){const bmp=await createImageBitmap(f);const m=Math.max(bmp.width,bmp.height);if(m<=6400&&m>=900)return f;const k=m>6400?6400/m:1600/m;
   const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);return c}
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('脚本加载失败'));document.head.appendChild(s)})}
-$('#runOcr').onclick=async()=>{if(!shots.length)return;ensureCat();catOptions($('#confCat'));pending=[];renderConf();go('confirm');const list=shots.slice();const N=list.length;
-  try{prog('正在加载识别引擎（首次约 20MB）…',0);if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
-    let cur=0;const wk=await Tesseract.createWorker(['eng','chi_sim'],1,{logger:m=>{if(m.status==='recognizing text')prog(`第${cur+1}/${N}张 · 识别中 ${Math.round(m.progress*100)}%`,(cur+m.progress*.6)/N);else if(m.status)prog('加载语言包… '+Math.round((m.progress||0)*100)+'%',0)}});
-    for(cur=0;cur<N;cur++){prog(`第${cur+1}/${N}张 · 识别中`,cur/N);const r=await wk.recognize(await prep(list[cur].f));
-      const ents=parseOCR(r.data.lines.map(l=>({t:l.text,c:l.confidence})));
-      for(let i=0;i<ents.length;i++){prog(`第${cur+1}/${N}张 · 查词典补全 ${i+1}/${ents.length}（${ents[i].word}）`,(cur+.6+.4*i/ents.length)/N);await Enrich.enrich(ents[i]);}
-      Enrich.linkDerived(ents);ents.forEach(e=>{e.id=uid();e._sel=true;e.photo=cur+1;e.status='new';e.v=2});pending.push(...ents);renderConf()}
-    await wk.terminate();const miss=pending.filter(w=>w.sentence&&!w.trans).length;
-    prog(`共 ${N} 张照片，识别到 ${pending.length} 个词条。请核对，勾选后点右上角 ✓ 导入。`+(miss?`（${miss} 条翻译失败，可手动填写）`:''),1);
-    shots.forEach(s=>URL.revokeObjectURL(s.url));shots=[];
-  }catch(err){prog('识别失败：'+(err&&err.message||err)+'。请检查网络后重试，或手动添加。',0)}};
-function renderConf(){const L=$('#confList');L.innerHTML='';let g=0;(pending||[]).forEach(w=>{if(w.photo!==g){g=w.photo;const h=document.createElement('div');h.className='grp';h.textContent=`第 ${g} 张照片`;L.appendChild(h)}
-  const d=document.createElement('div');d.className='ecard'+(w._sel?'':' off');d.innerHTML=`<span class="chk${w._sel?' on':''}" style="margin-top:8px">✓</span><div class="f">${editorHTML(w)}${w.flags&&w.flags.length?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(w.flags.join(' · '))}</div>`:''}</div>`;
-  d.querySelector('.chk').onclick=()=>{w._sel=!w._sel;renderConf()};L.appendChild(d);bindEditor(d,w,false)})}
-$('#selAll').onclick=()=>{const v=!(pending||[]).every(w=>w._sel);(pending||[]).forEach(w=>w._sel=v);renderConf()};
-$('#confOk').onclick=()=>{const c=cat($('#confCat').value);const sel=(pending||[]).filter(w=>w._sel&&w.word.trim());if(!c||!sel.length)return toast('请至少勾选一个单词');
-  sel.forEach(w=>{const{_sel,flags,photo,ocrSentence,...x}=w;c.words.push(x)});pending=null;S.cur=c.id;save();toast(`已导入 ${sel.length} 个单词`);prefetchAll();hist.length=0;renderLib();go('lib',false)};
+// ================= settings (xAI key lives only in IndexedDB 'kv'/'settings') =================
+let CFG={ai:false,key:'',model:'grok-4.7'};
+idbGet('kv','settings').then(v=>{if(v)CFG={...CFG,...v};showMode()}).catch(()=>{});
+function showMode(){const el=$('#ocrMode');if(el)el.textContent=CFG.ai&&CFG.key?`识别方式：AI（${CFG.model}），失败自动改用本地识别`:'识别方式：本地 Tesseract（可在 ⋯ → 识别设置 开启 AI）'}
+function openSet(){$('#setAI').checked=CFG.ai;$('#setKey').value=CFG.key;$('#setModel').value=CFG.model;$('#setMsg').textContent='';go('set')}
+function readSet(){return{ai:$('#setAI').checked,key:$('#setKey').value.trim(),model:$('#setModel').value.trim()||'grok-4.7'}}
+$('#setOk').onclick=async()=>{CFG=readSet();if(CFG.ai&&!CFG.key)CFG.ai=false;await idbSet('kv','settings',CFG);showMode();toast('已保存');back()};
+$('#setClear').onclick=async()=>{CFG={...CFG,key:'',ai:false};await idbSet('kv','settings',CFG);openSet();toast('已清除 Key')};
+$('#setTest').onclick=async()=>{const c=readSet();$('#setMsg').textContent='测试中…';try{const r=await xai(c,[{type:'input_text',text:'Reply with OK'}]);$('#setMsg').textContent='✅ 可用：'+r.slice(0,40)}catch(e){$('#setMsg').textContent='❌ '+e.message}};
+async function xai(c,content){const r=await fetch('https://api.x.ai/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},
+  body:JSON.stringify({model:c.model,store:false,input:[{role:'user',content}]})});const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error((j.error&&(j.error.message||j.error))||j.message||('HTTP '+r.status));
+  if(j.output_text)return j.output_text;const t=[];(j.output||[]).forEach(o=>(o.content||[]).forEach(x=>{if(x.type==='output_text'&&x.text)t.push(x.text)}));return t.join('')}
+async function toJpegURL(f){const bmp=await createImageBitmap(f);const k=Math.min(1,2400/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.88)}
+const AI_PROMPT=`This is a photo of an English vocabulary book page. Extract every printed headword entry in page order (top to bottom, left column before right column).
+Return STRICT JSON only, no markdown, in this shape: {"entries":[{"word":"","pos":"","meaning_zh":"","sentence_en":"","sentence_zh":""}]}
+Rules: pos like "n." "v." "adj."; meaning_zh is the printed Chinese meaning; sentence_en is the printed example sentence for that word, complete and correctly spelled; sentence_zh is a natural Simplified Chinese translation of sentence_en.
+Ignore handwriting, pen marks, highlighter and text bleeding through from the other side of the paper. If printed text is partly covered or cut off, reconstruct it from context. Skip anything that is not a headword entry.`;
+async function aiOCR(f){const url=await toJpegURL(f);const txt=await xai(CFG,[{type:'input_image',image_url:url,detail:'high'},{type:'input_text',text:AI_PROMPT}]);
+  const a=txt.indexOf('{'),b=txt.lastIndexOf('}');const j=JSON.parse(txt.slice(a,b+1));const arr=Array.isArray(j)?j:j.entries||[];
+  return arr.filter(x=>x&&x.word&&/^[A-Za-z][A-Za-z' -]*$/.test(String(x.word).trim())).map(x=>({word:String(x.word).trim(),pos:x.pos||'',meaning:x.meaning_zh||'',sentence:x.sentence_en||'',trans:x.sentence_zh||'',hint:'',extra:'',filled:false}))}
+// ================= photo import: straight into 未分类 / 全部单词 =================
+let tessW=null;async function tessOCR(f,cur,N){if(!window.Tesseract){prog('正在加载本地识别引擎（首次约 20MB）…',cur/N);await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')}
+  if(!tessW)tessW=await Tesseract.createWorker(['eng','chi_sim'],1,{logger:m=>{if(m.status==='recognizing text')prog(`第${tessW._cur+1}/${tessW._N}张 · 本地识别 ${Math.round(m.progress*100)}%`,(tessW._cur+m.progress*.6)/tessW._N)}});
+  tessW._cur=cur;tessW._N=N;const r=await tessW.recognize(await prep(f));const ents=parseOCR(r.data.lines.map(l=>({t:l.text,c:l.confidence})));
+  for(let i=0;i<ents.length;i++){prog(`第${cur+1}/${N}张 · 查词典补全 ${i+1}/${ents.length}（${ents[i].word}）`,(cur+.6+.4*i/ents.length)/N);await Enrich.enrich(ents[i])}Enrich.linkDerived(ents);return ents}
+let importing=false;
+$('#runOcr').onclick=async()=>{if(!shots.length||importing)return;importing=true;$('#runOcr').style.display='none';$('#prog').style.display='block';const list=shots.slice(),N=list.length;const got=[];let usedAI=0,fellBack=0,lastErr='';
+  try{for(let cur=0;cur<N;cur++){let ents=null;
+      if(CFG.ai&&CFG.key){prog(`第${cur+1}/${N}张 · AI 识别中…`,cur/N);try{ents=await aiOCR(list[cur].f);usedAI++;
+          for(let i=0;i<ents.length;i++){prog(`第${cur+1}/${N}张 · 补全音标/谐音 ${i+1}/${ents.length}`,(cur+.5+.5*i/ents.length)/N);await lite(ents[i]);if(!ents[i].meaning)ents[i].meaning=await Enrich.meaning(ents[i].word.toLowerCase()).catch(()=>'')}}
+        catch(e){lastErr=e.message;fellBack++;ents=null}}
+      if(!ents)ents=await tessOCR(list[cur].f,cur,N);
+      ents.forEach(e=>{const{flags,photo,ocrSentence,_sel,...x}=e;x.id=uid();x.status='new';x.v=2;got.push(x)})}
+    const L=ensureLoose();const before=allWords().length;L.words.push(...got);S.cur='__all';S.idx=before;save();
+    shots.forEach(s=>URL.revokeObjectURL(s.url));shots=[];renderThumbs();$('#prog').style.display='none';
+    toast(`已导入 ${got.length} 个词`+(fellBack?`（AI 失败 ${fellBack} 张，已改用本地识别：${lastErr.slice(0,40)}）`:''),fellBack?5000:2600);prefetchAll();hist.length=0;renderLib();go('lib',false)}
+  catch(err){prog('识别失败：'+(err&&err.message||err)+'。请检查网络后重试，或手动添加。',0);$('#runOcr').style.display='block'}
+  finally{importing=false;if(tessW){tessW.terminate().catch(()=>{});tessW=null}}};
+
+// ================= import by link / code =================
+function b64uDec(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const bin=atob(s);return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))}
+function parseImport(txt){txt=String(txt||'').trim();if(!txt)throw new Error('内容为空');let d=txt;const m=txt.match(/#import=([^\s]+)/);if(m)d=m[1];d=decodeURIComponent(d).replace(/^PZCK1[:：]/,'').trim();
+  let arr;if(/^[\[{]/.test(d))arr=JSON.parse(d);else arr=JSON.parse(b64uDec(d));if(!Array.isArray(arr))arr=arr.entries||arr.words||[];
+  const out=arr.filter(x=>x&&x.word&&String(x.word).trim()).map(x=>({word:String(x.word).trim(),pos:x.pos||'',meaning:x.meaning_zh||x.meaning||'',sentence:x.sentence_en||x.sentence||'',trans:x.sentence_zh||x.trans||'',hint:'',extra:'',filled:false}));
+  if(!out.length)throw new Error('没有找到单词');return out}
+async function importItems(items,msg){const L=ensureLoose();const before=allWords().length;const ws=items.map(x=>({...x,id:uid(),status:'new',v:2}));L.words.push(...ws);S.cur='__all';S.idx=before;save();
+  toast(msg||`已导入 ${ws.length} 个词`,3000);hist.length=0;renderLib();go('lib',false);
+  for(const w of ws){try{await lite(w);if(!w.meaning)w.meaning=await Enrich.meaning(w.word.toLowerCase())}catch(e){}save()}prefetchAll();if(view==='study')renderStudy(false);if(view==='lib')renderLib();return ws.length}
+$('#pasteBtn').onclick=async()=>{try{const items=parseImport($('#pasteBox').value);$('#pasteBox').value='';await importItems(items)}catch(e){toast('无法识别：'+e.message,3500)}};
+async function hashImport(){if(!/#import=/.test(location.hash))return;const raw=location.hash;history.replaceState(null,'',location.pathname+location.search);
+  try{const items=parseImport(raw);const code='PZCK1:'+raw.split('#import=')[1];await importItems(items,`已导入 ${items.length} 个词`);
+    if(!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches)sheet([['📋 复制导入代码（到主屏幕 App 里粘贴）',()=>{navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast('已复制，打开主屏幕 App → 拍照 → 粘贴导入'),()=>prompt('长按复制这段代码',code))}]],`<b>已导入 ${items.length} 个词</b>如果你平时用的是主屏幕上的「拍照词库」，它和 Safari 的数据是分开的。复制下面的代码，到主屏幕 App 的拍照页「粘贴导入链接/代码」里粘贴即可。`)}
+  catch(e){toast('导入链接无效：'+e.message,4000)}}
+window.addEventListener('hashchange',hashImport);
 // ================= manual =================
 let mWord=null,mEdit=false;
 function openManual(w){ensureCat();mEdit=!!w;mWord=w||{id:uid(),word:'',ipaUK:'',ipaUS:'',pos:'',meaning:'',hint:'',sentence:'',trans:'',extra:'',status:'new',v:2};
@@ -198,11 +250,11 @@ function migrate(){let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.
 // ================= boot =================
 (async()=>{try{const d=await idbGet('kv','state');if(d&&Array.isArray(d.cats))S=d}catch(e){}
   if(!S.cats.length){const c=newCat('雅思核心词汇');c.words.push({id:uid(),word:'erosion',ipaUK:'ɪˈrəʊʒən',ipaUS:'ɪˈroʊʒən',pos:'n.',meaning:'侵蚀，腐蚀',hint:'衣肉神',sentence:'Due to the threat of erosion, it is unsafe to build on the land.',trans:'由于存在侵蚀的威胁，在这片土地上建造是不安全的。',extra:'派生 erode [ɪˈrəʊd] (v.) 侵蚀',status:'new',v:2});S.cur=c.id;save()}
-  if(S.cur!=='__all'&&!cat(S.cur))S.cur=(S.cats[0]||{}).id;migrate();renderStudy(false);
+  ensureLoose();if(S.cur!=='__all'&&!cat(S.cur))S.cur=(S.cats[0]||{}).id;migrate();renderStudy(false);
   // try autoplay on startup
   const w=curWord();if(w){const a=getA(wordURL(w.word));const tryPlay=()=>a.play().then(()=>{unlocked=true}).catch(err=>{if(err&&err.name==='NotAllowedError'){$('#hint').style.display='block'}else tts(w.word)});
     if(a.readyState>=2)tryPlay();else{a.addEventListener('canplay',()=>{if(!unlocked)tryPlay()},{once:true});setTimeout(()=>{if(!unlocked&&a.readyState<2)$('#hint').style.display='block'},1500)}}
-  setTimeout(prefetchAll,800)})();
+  setTimeout(prefetchAll,800);hashImport()})();
 // ================= service worker auto-update =================
 if('serviceWorker'in navigator){const had=!!navigator.serviceWorker.controller;let reloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!reloading){reloading=true;location.reload()}});

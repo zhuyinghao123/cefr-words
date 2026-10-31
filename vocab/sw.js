@@ -1,4 +1,4 @@
-const V='vocab-v3',AUD='vocab-audio';
+const V='vocab-v4',AUD='vocab-audio';
 const A=['./','index.html','app.css','app.js','parse.js','enrich.js','cefr.js','manifest.json','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(A)))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x.startsWith('vocab-v')&&x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});

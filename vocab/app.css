@@ -65,3 +65,10 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 .th .mv{position:absolute;bottom:5px;left:5px;right:5px;display:flex;justify-content:space-between}.th .mv button{width:30px;height:26px;border-radius:13px;background:#fffd}
 .prog{background:var(--card);border-radius:18px;padding:14px;margin:10px 0}.bar{height:6px;background:var(--grey);border-radius:3px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--red);width:0;transition:width .3s}
 #catList .row{flex-wrap:wrap;row-gap:8px}#catList .row .t{flex:1 1 calc(100% - 40px);min-width:0}#catList .row .t b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}#catList .row [data-a=study]{margin-left:30px;margin-right:auto}
+
+#v-study{padding-bottom:190px}
+.fixbar{position:fixed;left:50%;transform:translateX(-50%);width:min(520px,100%);padding:12px 18px 8px;bottom:calc(env(safe-area-inset-bottom) + 166px);display:flex;align-items:center;gap:12px;background:linear-gradient(#f3efe600,var(--bg) 35%);z-index:15}
+#v-study .acts{position:fixed;left:50%;transform:translateX(-50%);width:min(520px,100%);padding:4px 18px 10px;bottom:calc(env(safe-area-inset-bottom) + 100px);margin:0;background:var(--bg);border-top:0;z-index:15}
+.sht{font-size:14px;color:var(--mute);padding:4px 6px 10px;line-height:1.5}.sht:empty{display:none}.sht b{color:var(--ink);font-size:16px;display:block;margin-bottom:4px}
+.item.danger{color:var(--red)}
+.pop .pz{font-size:18px;margin-top:8px}

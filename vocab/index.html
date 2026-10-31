@@ -9,6 +9,7 @@
   <div class="top"><button class="rbtn" id="closeBtn" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="#1d1b18" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <button id="catName" style="font-size:15px;color:#5e594f;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></button><button class="rbtn" id="moreBtn" aria-label="更多"><svg viewBox="0 0 24 24" fill="#1d1b18"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
   <div class="card" id="card"></div>
+  <div class="fixbar" id="fixbar"><button class="rplay" id="spW" aria-label="读单词"></button><button class="gbtn" id="prev" aria-label="上一个"></button><button class="gbtn" id="next" aria-label="下一个"></button><span class="cnt" id="cnt"></span></div>
   <div class="acts"><button class="big g" id="dunno">还不会</button><button class="big r" id="gotit">记住了</button></div>
 </section>
 <!-- 词库 -->
@@ -21,7 +22,7 @@
 <!-- 单词管理 -->
 <section class="view" id="v-words">
   <div class="top"><button class="rbtn" data-back>‹</button><h2 id="wTitle"></h2><span id="wOkWrap" style="width:52px"></span></div>
-  <div class="pbtns"><button class="pb" id="wDelMode">多选删除</button><button class="pb" id="wEditMode">编辑</button><button class="pb" id="wFix">补全音标/谐音/等级</button></div>
+  <div class="pbtns"><button class="pb" id="wMoveMode">多选加入分类</button><button class="pb" id="wDelMode">多选删除</button><button class="pb" id="wEditMode">编辑</button><button class="pb" id="wFix">补全音标/谐音/等级</button></div>
   <div class="list" id="wList"></div>
 </section>
 <!-- 拍照 -->
@@ -31,15 +32,22 @@
   <div class="thumbs" id="thumbs"></div>
   <p class="muted" id="photoTip">可连续拍多张；识别按缩略图顺序进行，第 1 张的单词排在最前。</p>
   <button class="big r" style="width:100%;display:none" id="runOcr">开始识别</button>
+  <div class="prog" id="prog" style="display:none;margin-top:14px"><div id="progT">准备中…</div><div class="bar"><i id="progB"></i></div></div>
+  <p class="muted" id="ocrMode"></p>
+  <div class="ecard" style="margin-top:16px"><div class="f"><label>粘贴导入链接/代码</label><textarea id="pasteBox" placeholder="粘贴 #import= 链接，或 PZCK1: 开头的代码，或 JSON"></textarea><button class="pb r" id="pasteBtn" style="margin-top:8px">导入到词库</button></div></div>
   <input type="file" id="pick" accept="image/*" multiple hidden><input type="file" id="shoot" accept="image/*" capture="environment" hidden>
 </section>
-<!-- 确认 -->
-<section class="view" id="v-confirm">
-  <div class="top"><button class="rbtn" data-back>‹</button><h2>确认导入</h2><button class="ok" id="confOk">✓</button></div>
-  <div class="prog" id="prog"><div id="progT">准备中…</div><div class="bar"><i id="progB"></i></div></div>
-  <div class="fm"><label>导入到分类</label><select id="confCat"></select></div>
-  <div class="pbtns" style="margin-top:10px"><button class="pb" id="selAll">全选 / 全不选</button></div>
-  <div id="confList"></div>
+<!-- 设置 -->
+<section class="view" id="v-set">
+  <div class="top"><button class="rbtn" data-back>‹</button><h2>识别设置</h2><button class="ok" id="setOk">✓</button></div>
+  <div class="ecard"><div class="f">
+    <label><input type="checkbox" id="setAI" style="width:auto;margin-right:6px">使用 AI 识别（xAI Grok，更准）</label>
+    <label>xAI API Key（只保存在本机 IndexedDB，不会上传到别处）</label><input id="setKey" type="password" autocomplete="off" placeholder="xai-...">
+    <label>模型</label><input id="setModel" placeholder="grok-4.7">
+    <p class="muted" style="font-size:13px">没有 Key 或调用失败时，会自动改用本地 Tesseract 识别。照片会发送到 api.x.ai。</p>
+  </div></div>
+  <div class="pbtns"><button class="pb" id="setTest">测试 Key</button><button class="pb" id="setClear">清除 Key</button></div>
+  <p class="muted" id="setMsg"></p>
 </section>
 <!-- 手动 -->
 <section class="view" id="v-manual">
@@ -50,7 +58,7 @@
 </div>
 <nav class="nav"><button class="tab on" id="tabStudy">学习</button><button class="cam" id="camBtn" aria-label="拍照导入"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button><button class="tab" id="tabLib">词库</button></nav>
 <div class="pop" id="pop"></div><div class="toast" id="toast"></div><div class="hint" id="hint" style="display:none">轻点任意处开始朗读</div>
-<div class="sheet" id="sheet"><div class="in" id="sheetIn"></div></div>
+<div class="sheet" id="sheet"><div class="in"><div class="sht" id="sheetT"></div><div id="sheetIn"></div></div></div>
 <input type="file" id="restoreFile" accept="application/json,.json" hidden>
 <script src="cefr.js"></script><script src="parse.js"></script><script src="enrich.js"></script><script src="app.js"></script>
 </body></html>
