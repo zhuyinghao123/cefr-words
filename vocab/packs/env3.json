@@ -21,7 +21,7 @@
 {"word":"radiocarbon","pos":"n.","meaning_zh":"放射性碳","sentence_en":"The age of an artifact as old as this one can only be determined by radiocarbon dating.","sentence_zh":"这么古老的文物，只能用放射性碳测年来确定年代。"},
 {"word":"biodiversity","pos":"n.","meaning_zh":"生物多样性","sentence_en":"The biodiversity of the earth is being threatened by the continued expansion of human settlements and the excessive use of natural resources.","sentence_zh":"人类聚居地不断扩张、自然资源被过度使用，正威胁着地球的生物多样性。"},
 {"word":"vaporize","pos":"v.","meaning_zh":"蒸发（英式拼写 vaporise）","sentence_en":"The sun is so hot in the Australian desert that a glass of water vaporizes in no time.","sentence_zh":"澳大利亚沙漠里太阳太毒，一杯水转眼就蒸发了。"},
-{"word":"balmy","pos":"adj.","meaning_zh":"（气候）温暖的","sentence_en":"The weather in Southern England is mostly nice and balmy. The wind is always a soft breeze and the sun is warm but never too hot.","sentence_zh":"英格兰南部的天气大多宜人温暖，风总是很柔和，阳光温暖但从不太热。"},
+{"word":"balmy","pos":"adj.","meaning_zh":"（气候）温暖的","sentence_en":"The weather in Southern England is mostly nice and balmy.","sentence_zh":"英格兰南部的天气大多宜人温暖。"},
 {"word":"inadvertently","pos":"adv.","meaning_zh":"不是有意地；不慎地","sentence_en":"The logging of the forest inadvertently exposed the remains and artifacts of a once lost culture.","sentence_zh":"森林砍伐无意中让一种失落文化的遗迹和文物重见天日。"},
 {"word":"heritage","pos":"n.","meaning_zh":"文化传统的继承；遗产","sentence_en":"1 out of 48 Australians have German heritage.","sentence_zh":"每 48 个澳大利亚人中就有 1 个有德国血统。"},
 {"word":"archaeology","pos":"n.","meaning_zh":"考古学","sentence_en":"The reason he studied archaeology in college is because he has dreams of going to faraway countries as an archaeologist to find dinosaur remains.","sentence_zh":"他大学学考古，是因为梦想以考古学家的身份去遥远的国家寻找恐龙遗骸。"},
@@ -32,5 +32,5 @@
 {"word":"torrid","pos":"adj.","meaning_zh":"酷热的；热情的","sentence_en":"In the desert it is important to find ways to escape the torrid heat.","sentence_zh":"在沙漠里，想办法躲避酷热很重要。"},
 {"word":"estuary","pos":"n.","meaning_zh":"河口","sentence_en":"Sediment that forms in river estuaries is an excellent source of fossils.","sentence_zh":"河口形成的沉积物是化石的极好来源。"},
 {"word":"lagoon","pos":"n.","meaning_zh":"礁湖，海水湖","sentence_en":"Because the water in lagoons is much calmer, they are a great place to go swimming.","sentence_zh":"礁湖里的水平静得多，所以是游泳的好地方。"},
-{"word":"sultry","pos":"adj.","meaning_zh":"极湿热的；撩人的","sentence_en":"The weather on the tropical island where we took our vacation was absolutely sultry. We hesitated even to leave the hotel room.","sentence_zh":"我们度假的热带岛屿天气闷热极了，连出酒店房间都犹豫。"}
+{"word":"sultry","pos":"adj.","meaning_zh":"极湿热的；撩人的","sentence_en":"The weather on the tropical island where we took our vacation was absolutely sultry.","sentence_zh":"我们度假的那个热带岛屿天气闷热极了。"}
 ]
