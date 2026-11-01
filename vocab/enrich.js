@@ -26,7 +26,8 @@ const fixStress2=s=>(s||'').split(' ').map(x=>x.replace(/t([ˈˌ])ʃ/g,'$1tʃ').
 async function ipa(word){const r=await ipaRaw(word);if(!r)return r;const uk=fixStress2(r.uk),us=fixStress2(r.us)||uk;return{...r,uk:uk||us,us}}
 async function ipaRaw(word){word=word.trim().toLowerCase();if(IPA_OV[word])return IPA_OV[word];
   const parts=word.split(/[\s-]+/).filter(Boolean);if(parts.length>1){const r=await Promise.all(parts.map(p=>ipa1(p)));if(r.some(x=>!x))return null;
-    const uk=r.map(x=>x.uk||x.us).join(' '),us=r.map(x=>x.us||x.uk).join(' ');return{uk,us,src:r[0].src}}return ipa1(word)}
+    const uk=r.map(x=>x.uk||x.us).join(' '),us=r.map(x=>x.us||x.uk).join(' ');return{uk,us,src:r[0].src}}const r=await ipa1(word);const a=usSp(word);if(a!==word){const r2=await ipa1(a);if(r2)return{...r2,uk:(r&&r.uk)||r2.uk}}return r}
+const usSp=w=>w.replace(/is(e|ed|es|ing|ation|ations|er|ers)$/,'iz$1').replace(/yse$/,'yze').replace(/ogue$/,'og');
 async function ipa1(word){return cached('ipa3:'+word,async()=>{let uk='',us='',src='';
   const j=await getJSON(`https://en.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(word)}&prop=wikitext&format=json&origin=*`);
   const t=j&&j.parse&&j.parse.wikitext&&j.parse.wikitext['*'];
@@ -57,7 +58,7 @@ function syl(ini,fin){if(ini==='r')return R_CH(fin);const c=[ini+fin,...(ALT[fin
   for(const s of c)if(CH[s])return CH[s];return (SOLO[ini]||'')+(CH[fin]||'')}
 const XY_OV={greenhouse:'格林豪斯',deforestation:'迪佛瑞斯泰神',erosion:'衣肉神',emission:'衣米神',blaze:'布雷兹',dispose:'迪斯波兹',inspection:'因斯拜克申',conflagration:'康夫勒格瑞神',
  // teacher-reviewed (American)
- rainfall:'雷恩佛尔',ecosystem:'伊扣西斯特姆','fossil fuel':'法索尔 菲尤尔',volcano:'瓦尔凯诺',devastate:'戴沃斯泰特',devastation:'戴沃斯泰神',bacteria:'拜克提瑞亚',eliminate:'伊利米内特',channel:'柴诺尔',silicon:'西利肯',astronomy:'阿斯特拉诺米',astronaut:'艾斯特若纳特',waterfall:'沃德佛尔',wildlife:'外尔德莱夫',equator:'伊奎德尔',iceberg:'艾斯伯格',surveyor:'瑟维厄尔',profound:'普若方德',invasive:'因维西夫',preservation:'普瑞泽维神',ecology:'伊卡勒吉',occur:'呃克尔',door:'多尔'};
+ rainfall:'雷恩佛尔',ecosystem:'伊扣西斯特姆','fossil fuel':'法索尔 菲尤尔',volcano:'瓦尔凯诺',devastate:'戴沃斯泰特',devastation:'戴沃斯泰神',bacteria:'拜克提瑞亚',eliminate:'伊利米内特',channel:'柴诺尔',silicon:'西利肯',astronomy:'阿斯特拉诺米',astronaut:'艾斯特若纳特',waterfall:'沃德佛尔',wildlife:'外尔德莱夫',equator:'伊奎德尔',iceberg:'艾斯伯格',surveyor:'瑟维厄尔',profound:'普若方德',invasive:'因维西夫',preservation:'普瑞泽维神',ecology:'伊卡勒吉',occur:'呃克尔',door:'多尔',drought:'抓特',horizon:'赫瑞曾',fahrenheit:'费伦海特',celsius:'塞尔西厄斯',lunar:'鲁纳尔',polar:'波勒尔',spectacular:'斯拜克泰丘勒尔'};
 function xieyinW(word,ip){const w=(word||'').trim().toLowerCase();if(Object.prototype.hasOwnProperty.call(XY_OV,w))return XY_OV[w];if(!ip)return'';const ps=ip.split(/\s+/).filter(Boolean);return ps.map(xieyin).join(' ')}
 function xieyin(ip){if(!ip)return'';let s=ip.normalize('NFD').replace(/n\u0329/g,'ən').replace(/l\u0329/g,'əl').replace(/m\u0329/g,'əm').replace(/[\u0300-\u036f]/g,'').replace(/ɾ/g,'d').replace(/([aeiouæʌəɑɒɔʊɜɪɝɚrː])t(?=[aeiouæʌəɑɒɔʊɜɪɚ])(?!ən)/g,'$1d').replace(/[ˈˌ\/\[\]()ʰ‿.ˑ̩ ]/g,'').replace(/ɡ/g,'g').replace(/s([ptk])(?=[aeiouæʌəɑɒɔʊɜɪr]|$)/g,(m,c)=>'s'+{p:'b',t:'d',k:'g'}[c]).replace(/ɹ/g,'r').replace(/ɛ/g,'e').replace(/ɚ/g,'ər').replace(/ɝ$/,'ɜːr').replace(/ɝ/g,'ɜː');
   const T=[];while(s){const v=VOW.find(x=>s.startsWith(x));if(v){T.push({v});s=s.slice(v.length);continue}const c=CON.find(x=>s.startsWith(x));if(c)T.push({c});s=s.slice(c?c.length:1)}
@@ -143,7 +144,8 @@ async function snap(word){const L=await lex();if(L.has(word)||(CE&&CE.has(word))
 // ---------- level ----------
 const EVP={erosion:'C1',astronaut:'C1',vegetation:'C2',catastrophe:'C2'}; // Cambridge EVP badge, checked on dictionary.cambridge.org
 const ORD=['A1','A2','B1','B2','C1','C2'];
-function level(word){word=(word||'').trim().toLowerCase();if(!CE)return{lv:null,src:''};if(CE.D.ox[word]||CE.D.cj[word])return level1(word);if(EVP[word])return{lv:EVP[word],src:'Cambridge EVP',lemma:word};
+function level(word){const r=level0(word);if(r&&r.lv)return r;const w=(word||'').trim().toLowerCase(),a=usSp(w);if(a!==w){const r2=level0(a);if(r2&&r2.lv)return r2}return r}
+function level0(word){word=(word||'').trim().toLowerCase();if(!CE)return{lv:null,src:''};if(CE.D.ox[word]||CE.D.cj[word])return level1(word);if(EVP[word])return{lv:EVP[word],src:'Cambridge EVP',lemma:word};
   const ps=word.split(/[\s-]+/).filter(Boolean);if(ps.length>1){const r=ps.map(level1);if(r.every(x=>x.lv))return{lv:r.map(x=>x.lv).sort((a,b)=>ORD.indexOf(b)-ORD.indexOf(a))[0],src:'各部分最高级',lemma:word};return{lv:null,src:'',lemma:word}}return level1(word)}
 function level1(word){if(EVP[word])return{lv:EVP[word],src:'Cambridge EVP',lemma:word};const l=CE.lemma(word);if(CE.D.ox[l])return{lv:CE.lvOf(l),src:'Oxford',lemma:l};if(CE.D.cj[l])return{lv:CE.lvOf(l),src:'CEFR-J',lemma:l};return{lv:null,src:'',lemma:l}}
 // ---------- full enrichment of one parsed entry ----------
