@@ -25,7 +25,7 @@ function moveIn(arr,item,ni){arr.splice(arr.indexOf(item),1);arr.splice(ni,0,ite
 function lvBadge(w,cls='lv'){const l=Enrich.level(w.word||'');if(!l.lv)return'';const u='https://dictionary.cambridge.org/dictionary/english/'+encodeURIComponent(l.lemma||w.word);
   return `<a class="${cls}" href="${u}" target="_blank" rel="noopener" title="来源 ${esc(l.src||'')}，点开剑桥词典核对" onclick="event.stopPropagation()">${l.lv}</a><small class="lvsrc">${esc(l.src||'')} · 点等级看剑桥</small>`}
 // ================= audio =================
-const wordURL=w=>'https://dict.youdao.com/dictvoice?type=1&audio='+encodeURIComponent(w.trim());
+const wordURL=w=>'https://dict.youdao.com/dictvoice?type=2&audio='+encodeURIComponent(w.trim());
 const sentURL=s=>'https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q='+encodeURIComponent(s.trim().slice(0,200));
 const pool=new Map();let unlocked=false,lastLatency=null;const player=new Audio();player.preload='auto';
 function getA(url){let a=pool.get(url);if(!a){a=new Audio();a.preload='auto';a.src=url;a.load();pool.set(url,a)}return a}
@@ -86,7 +86,7 @@ function sentHTML(s,word){const re=stemRe(word);return esc(s).split(/(\s+)/).map
 const ST={new:'新词',learning:'学习中',known:'已掌握'};
 function renderStudy(speak){const ws=studyWords(),C=$('#card');const cc=cat(S.cur);$('#catName').textContent=(S.cur==='__all'?'全部单词':cc?cc.name:'全部单词')+' ▾';
   $('#fixbar').style.visibility=ws.length?'visible':'hidden';if(!ws.length){$('#cnt').textContent='';C.innerHTML=`<div class="acc"></div><div class="head" style="padding:60px 24px"><div class="word" style="font-size:34px">还没有单词</div><p class="muted" style="margin-top:16px">点下方红色相机按钮拍照导入，<br>或在「词库」里手动添加。</p></div>`;return}
-  const w=curWord();const ipa=w.ipaUK||w.ipaUS?[w.ipaUK&&`<span><small>英</small>/${esc(w.ipaUK)}/</span>`,w.ipaUS&&`<span><small>美</small>/${esc(w.ipaUS)}/</span>`].filter(Boolean).join(''):esc(w.ipa||'');
+  const w=curWord();const ipa=w.ipaUK||w.ipaUS?[w.ipaUS&&`<span><small>美</small>/${esc(w.ipaUS)}/</span>`,w.ipaUK&&w.ipaUK!==w.ipaUS&&`<span class="uk"><small>英</small>/${esc(w.ipaUK)}/</span>`].filter(Boolean).join(''):esc(w.ipa||'');
   C.innerHTML=`<div class="acc"></div><div class="head"><div class="word"><span class="wt">${esc(w.word)}</span>${lvBadge(w)}</div><div class="ipa">${ipa}</div>
    <div class="mean">${w.pos?`<span class="pos">${esc(w.pos)}</span>`:''}${esc(w.meaning)}</div>${w.hint?`<span class="pill">谐音 ${esc(w.hint)}</span>`:''}</div>
    <div class="ex"><div class="exh"><span>例句 · 点不认识的词${w.filled?'<span class="tag">补全</span>':''}</span><button class="gbtn" id="spS" aria-label="读例句">${ICON.spk}</button></div>
@@ -215,7 +215,7 @@ function editorHTML(w){return `<div class="two"><input class="w" data-k="word" p
 function bindEditor(d,w,live){d.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{w[i.dataset.k]=i.value;if(i.dataset.k==='word'){d.querySelector('[data-lv]').innerHTML=lvBadge(w,'tag')}if(i.dataset.k==='sentence')w.filled=false;if(live)save()})}
 // ================= enrichment helpers =================
 async function lite(w,force){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip&&(force||!w.ipaUK&&!w.ipaUS)){w.ipaUK=ip.uk;w.ipaUS=ip.us}
-  if(!w.hint||/[A-Za-z]/.test(w.hint)||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=6}
+  if(!w.hint||/[A-Za-z]/.test(w.hint)||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=7}
 // ================= photo import =================
 let shots=[];
 $('#pickBtn').onclick=()=>$('#pick').click();$('#shootBtn').onclick=()=>$('#shoot').click();
@@ -310,7 +310,7 @@ $('#mAuto').onclick=async()=>{const w=mWord;if(!w.word.trim())return toast('先�
   const e=await Enrich.enrich({...w,word:w.word.trim()});['ipaUK','ipaUS','hint','meaning','sentence','trans','filled'].forEach(k=>{if(!w[k]||k==='ipaUK'||k==='ipaUS')w[k]=e[k]});if(!w.pos&&e.pos)w.pos=e.pos;
   const sel=$('#mCat')&&$('#mCat').value;$('#mForm').innerHTML=(mEdit?'':'<div class="fm"><label>分类</label><select id="mCat"></select></div>')+editorHTML(w);if(!mEdit){catOptions($('#mCat'));$('#mCat').value=sel}bindEditor($('#mForm'),w,mEdit);b.textContent='自动补全音标 / 谐音 / 释义 / 翻译';if(mEdit)save()};
 $('#mOk').onclick=async()=>{const w=mWord;if(!w.word.trim())return toast('请输入单词');w.word=w.word.trim();
-  if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);if(!w.hint&&(w.ipaUK||w.ipaUS))w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS);
+  if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);if(!w.hint&&(w.ipaUK||w.ipaUS))w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK);
   if(!mEdit){(cat($('#mCat').value)||LIBC).words.push(w);toast('已添加，可继续输入');save();prefetchAll();openManual();hist.pop()}else{save();toast('已保存');back()}};
 // ================= backup / restore =================
 function backup(){const b=new Blob([JSON.stringify({app:'paizhaociku',v:2,date:new Date().toISOString(),data:S},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='拍照词库备份-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
@@ -324,10 +324,11 @@ function fixData(){S.lib=Array.isArray(S.lib)?S.lib:[];const L=S.cats.filter(c=>
   const sw=new Set(),dk=w=>{const k=wkey(w);if(!k)return true;if(sw.has(k))return false;sw.add(k);return true};ord.forEach(c=>c.words=c.words.filter(dk));S.lib=S.lib.filter(dk);save()}
 function migrate(){
   // v6: regenerate auto 谐音 locally for the user's own stored words only (no network, chunked so the UI never blocks)
-  const v5=allWords().filter(w=>w.v===5&&(w.ipaUK||w.ipaUS));if(v5.length)(async()=>{for(let i=0;i<v5.length;i++){const w=v5[i];try{if(!w.hint||/[A-Za-z]/.test(w.hint)||w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS)||w.hint}catch(e){}w.v=6;if(i%20===19)await new Promise(r=>setTimeout(r,0))}save();if(view==='study')renderStudy(false)})();
-  const old=allWords().filter(w=>!w.v||w.v<5||w.v===5&&!w.ipaUK&&!w.ipaUS);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
+  // v7: American defaults — refresh IPA (stress fixes/overrides, mostly from local cache) and regenerate auto 谐音 from US IPA; user's stored words only
+  const v5=allWords().filter(w=>(w.v===5||w.v===6)&&(w.ipaUK||w.ipaUS));if(v5.length)(async()=>{for(let i=0;i<v5.length;i++){const w=v5[i];try{const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}}catch(e){}try{if(!w.hint||/[A-Za-z]/.test(w.hint)||w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK)||w.hint}catch(e){}w.v=7;if(i%10===9){save();await new Promise(r=>setTimeout(r,0))}}save();if(view==='study')renderStudy(false)})();
+  const old=allWords().filter(w=>!w.v||w.v<5||w.v>=5&&w.v<7&&!w.ipaUK&&!w.ipaUS);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
   let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.status=w.status||'new';w.ocrIpa=w.ipa;need.push(w)}}));
-  if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyinW(w.word,w.ipaUK||w.ipaUS);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
+  if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
 // ================= boot =================
 (async()=>{try{const d=await idbGet('kv','state');if(d&&Array.isArray(d.cats))S=d}catch(e){}
   try{
