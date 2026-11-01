@@ -145,12 +145,14 @@ const commonMenu=()=>[['↕️ 按钮高度',ctlPanel],['📍 恢复默认位置
 $('#moreBtn').onclick=()=>{const w=curWord(),c=cat(S.cur);sheet([...(w?[['✏️ 编辑这个单词',()=>openManual(w)],['🔊 读例句',()=>saySent(w)]]:[]),...(c?[['📋 管理本分类单词',()=>openWords(c.id)]]:[]),...commonMenu()])};
 $('#libMore').onclick=()=>sheet(commonMenu());
 // ================= library =================
-function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered();
+let COLL;try{COLL=new Set(JSON.parse(localStorage.getItem('vocab-collapsed')||'[]'))}catch(_){COLL=new Set()}
+const saveColl=()=>{try{localStorage.setItem('vocab-collapsed',JSON.stringify([...COLL]))}catch(_){}};
+function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered().filter(c=>!(c.parent&&COLL.has(c.parent)));
   
   all.forEach(c=>{const d=document.createElement('div');d.className='row'+(c.parent?' child':'')+(c.id===S.cur?' sel':'');d.dataset.id=c.id;
-    d.innerHTML=`<span class="drag">☰</span><div class="t"><b>${esc(c.name)}</b><small>${count(c)} 词</small></div>
+    const hk=!c.parent&&kids(c.id).length>0;d.innerHTML=`<span class="drag">☰</span><div class="t"><b>${hk?`<span class="chev" style="display:inline-block;width:1.1em;color:#888">${COLL.has(c.id)?'▸':'▾'}</span>`:''}${esc(c.name)}</b><small>${count(c)} 词</small></div>
     <button class="pb r" style="height:34px;padding:0 10px;font-size:13px" data-a="study">学这个类</button><button class="mini" data-a="up">↑</button><button class="mini" data-a="dn">↓</button>${c.parent?'':'<button class="mini" data-a="sub" title="新建子类">＋</button>'}<button class="mini" data-a="more">⋯</button>`;
-    d.querySelector('.t').onclick=()=>{S.cur=c.id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)};
+    d.querySelector('.t').onclick=ev=>{if(hk){ev.stopPropagation();COLL.has(c.id)?COLL.delete(c.id):COLL.add(c.id);saveColl();return renderLib()}S.cur=c.id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)};
     d.querySelectorAll('button').forEach(b=>b.onclick=()=>catAct(c,b.dataset.a));L.appendChild(d)});
   const OL=document.createElement('div');OL.id='outList';const ms=libSel!==null;
   OL.innerHTML=S.lib.length?`<div class="olh"><span>未归类的单词</span><button class="olb" id="olMs">${ms?'取消':'多选'}</button></div>${ms?`<div class="olact"><button class="pb" id="olAll">全选</button><button class="pb${libAct==='del'?' r':''}" id="olDel">删除</button><button class="pb${libAct==='move'?' r':''}" id="olMove">加入分类</button><span class="muted">已选 ${libSel.size}，点右上 ✓ 确认</span></div>`:''}<ul class="ol">${S.lib.map(w=>`<li data-w="${w.id}">${ms?`<span class="chk${libSel.has(w.id)?' on':''}">✓</span>`:''}<div class="sw"><b>${esc(w.word)}</b> <span>${esc(w.pos||'')} ${esc(w.meaning||'')}</span></div><button class="swdel">删除</button></li>`).join('')}</ul>`:'';
@@ -164,7 +166,7 @@ function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered();
 function studyCat(id){S.cur=id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)}
 function catAct(c,a){if(a==='study')return studyCat(c.id);
   if(a==='up'||a==='dn'){const sib=S.cats.filter(x=>(x.parent||null)===(c.parent||null));const i=sib.indexOf(c),j=i+(a==='up'?-1:1);if(j<0||j>=sib.length)return;moveIn(S.cats,c,S.cats.indexOf(sib[j]));save();renderLib()}
-  else if(a==='sub'){const n=prompt('子类名称');if(n&&n.trim()){newCat(n.trim(),c.id);save();renderLib()}}
+  else if(a==='sub'){const n=prompt('子类名称');if(n&&n.trim()){newCat(n.trim(),c.id);COLL.delete(c.id);saveColl();save();renderLib()}}
   else if(a==='more')sheet([['📋 管理单词',()=>openWords(c.id)],['✏️ 重命名',()=>{const n=prompt('新名称',c.name);if(n){c.name=n;save();renderLib()}}],
     ['🗑 删除分类',()=>delCat(c),1]])}
 function delCat(c){const ks=c.parent?[]:kids(c.id);const n=count(c);
