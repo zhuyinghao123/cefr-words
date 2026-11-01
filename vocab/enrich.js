@@ -18,7 +18,7 @@ function fixStress(s){return s.replace(/([^aeiouɑɔəɜɪʊæʌɒˈˌ ]*)([ˈˌ
 const IPA_OV={'fossil fuel':{uk:'ˈfɒsl ˈfjuːəl',us:'ˈfɑːsəl ˈfjuːəl',src:'审校'},
  channel:{uk:'ˈtʃænl',us:'ˈtʃænəl',src:'审校'},silicon:{uk:'ˈsɪlɪkən',us:'ˈsɪlɪkən',src:'审校'},astronaut:{uk:'ˈæstrənɔːt',us:'ˈæstrənɑːt',src:'审校'},
  astronomy:{uk:'əˈstrɒnəmi',us:'əˈstrɑːnəmi',src:'审校'},preservation:{uk:'ˌprezəˈveɪʃən',us:'ˌprezərˈveɪʃən',src:'审校'},profound:{uk:'prəˈfaʊnd',us:'prəˈfaʊnd',src:'审校'},
- volcano:{uk:'vɒlˈkeɪnəʊ',us:'vɑːlˈkeɪnoʊ',src:'审校'},waterfall:{uk:'ˈwɔːtəfɔːl',us:'ˈwɔːtərfɔːl',src:'审校'},conflagration:{uk:'ˌkɒnfləˈgreɪʃn',us:'ˌkɑːnfləˈgreɪʃən',src:'审校'},famine:{uk:'ˈfæmɪn',us:'ˈfæmən',src:'审校'},estuary:{uk:'ˈestʃuəri',us:'ˈestʃuˌeri',src:'审校'},radiocarbon:{uk:'ˌreɪdiəʊˈkɑːbən',us:'ˌreɪdioʊˈkɑːrbən',src:'审校'}};
+ volcano:{uk:'vɒlˈkeɪnəʊ',us:'vɑːlˈkeɪnoʊ',src:'审校'},waterfall:{uk:'ˈwɔːtəfɔːl',us:'ˈwɔːtərfɔːl',src:'审校'},conflagration:{uk:'ˌkɒnfləˈgreɪʃn',us:'ˌkɑːnfləˈgreɪʃən',src:'审校'},famine:{uk:'ˈfæmɪn',us:'ˈfæmən',src:'审校'},estuary:{uk:'ˈestʃuəri',us:'ˈestʃuˌeri',src:'审校'},radiocarbon:{uk:'ˌreɪdiəʊˈkɑːbən',us:'ˌreɪdioʊˈkɑːrbən',src:'审校'},topographical:{uk:'ˌtɒpəˈgræfɪkəl',us:'ˌtɑːpəˈgræfɪkəl',src:'审校'},hurricane:{uk:'ˈhʌrɪkən',us:'ˈhɜːrəˌkeɪn',src:'审校'},copse:{uk:'kɒps',us:'kɑːps',src:'审校'}};
 const badIPA=x=>!x||/[^aeiouɑɔəɜɪʊæʌɒɐɛiː]ː|ː{2}/.test(x)||!/[aeiouɑɔəɜɪʊæʌɒɐɛ]/.test(x);
 const NV=s=>(s.match(/aɪ|eɪ|ɔɪ|əʊ|oʊ|aʊ|[iɪeæʌəɐɑɒɔʊuɜa]/g)||[]).length;
 // general stress fixes: never split tʃ/dʒ; drop a word-initial secondary stress directly followed by the primary
