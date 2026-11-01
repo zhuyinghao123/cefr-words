@@ -64,16 +64,16 @@ function xieyinW(word,ip){const w=(word||'').trim().toLowerCase();if(Object.prot
 function xieyin(ip){if(!ip)return'';let s=ip.normalize('NFD').replace(/n\u0329/g,'ən').replace(/l\u0329/g,'əl').replace(/m\u0329/g,'əm').replace(/[\u0300-\u036f]/g,'').replace(/ɾ/g,'d').replace(/([aeiouæʌəɑɒɔʊɜɪɝɚrː])t(?=[aeiouæʌəɑɒɔʊɜɪɚ])(?!ən)/g,'$1d').replace(/[ˈˌ\/\[\]()ʰ‿.ˑ̩ ]/g,'').replace(/ɡ/g,'g').replace(/s([ptk])(?=[aeiouæʌəɑɒɔʊɜɪr]|$)/g,(m,c)=>'s'+{p:'b',t:'d',k:'g'}[c]).replace(/ɹ/g,'r').replace(/ɛ/g,'e').replace(/ɚ/g,'ər').replace(/ɝ$/,'ɜːr').replace(/ɝ/g,'ɜː');
   const T=[];while(s){const v=VOW.find(x=>s.startsWith(x));if(v){T.push({v});s=s.slice(v.length);continue}const c=CON.find(x=>s.startsWith(x));if(c)T.push({c});s=s.slice(c?c.length:1)}
   let out='';for(let i=0;i<T.length;i++){const t=T[i];
-    if(t.c==='r'&&i>0&&T[i-1].c&&T[i+1]&&T[i+1].v){const f0=FIN[T[i+1].v],a=T[i+2],b=T[i+3],nas=a&&a.c&&NAS[a.c]&&!(b&&b.v);if(/^(i|ei|ai|e)$/.test(f0)||nas&&/^(i|e|ai|ei)$/.test(f0)){out+='瑞'+(nas?(a.c==='ŋ'?'英':'恩'):'');i+=nas?2:1;continue}}
+    if(t.c==='r'&&i>0&&T[i-1].c&&T[i+1]&&T[i+1].v){const f0=FIN[T[i+1].v],a=T[i+2],b=T[i+3],nas=a&&a.c&&NAS[a.c]&&!(b&&b.v);if(f0!==undefined){out+='瑞'+(nas?(a.c==='ŋ'?'英':'恩'):'');i+=nas?2:1;continue}}
     if(t.c==='t'&&T[i+1]&&T[i+1].c==='r'&&T[i+2]&&/^(i|ɪ|iː)$/.test(T[i+2].v||'')){out+='垂';i+=2;continue}
     if(t.c&&T[i+1]&&T[i+1].v==='eɪ'&&T[i+2]&&T[i+2].c==='n'&&!(T[i+3]&&T[i+3].v)){out+=syl(INI[t.c==='r'?'l':t.c],'ei')+'恩';i+=2;continue}
     if(t.c&&JU[t.c]&&T[i+1]&&T[i+1].c==='j'&&T[i+2]&&/^(uː|u|ʊ|ʊə)$/.test(T[i+2].v||'')){out+=JU[t.c];i+=2;if(T[i+1]&&T[i+1].v==='ə'&&T[i+2]&&/^[lr]$/.test(T[i+2].c||'')&&!T[i+3])i+=1;continue}
     if(t.c){const n=T[i+1];if(n&&n.v){const vt=n.v;let fin=FIN[vt];const after=T[i+2],aft2=T[i+3];
-        if(after&&after.c==='ŋ'&&i+2===T.length-1&&/^(i|iː|ɪ)$/.test(vt)){out+=(t.c==='s'?'西':syl(INI[t.c],'i'))+'英';i+=2;continue}
+        if(after&&after.c==='ŋ'&&i+2===T.length-1){out+=(t.c==='s'&&fin==='i'?'西':syl(INI[t.c],fin))+'英';i+=2;continue}
         if(after&&after.c&&NAS[after.c]&&!(aft2&&aft2.v)){fin=NAS[after.c][fin]||fin;i+=1}
         out+=(t.c==='s'&&fin==='i'&&/^(ɪ|iː|i)$/.test(vt))?'西':(t.c==='w'&&fin==='a'&&/^ɑ/.test(vt))?'沃':syl(INI[t.c],fin);i+=1;if(after&&after.c==='r'&&!(aft2&&aft2.v)){i+=1;out+='尔'}}
       else out+=SOLO[t.c]||'';continue}
-    let fin=FIN[t.v];const n=T[i+1],n2=T[i+2];if(n&&n.c&&NAS[n.c]&&!(n2&&n2.v)){fin=NAS[n.c][fin]||fin;i++}out+=syl('',fin);if(n&&n.c==='r'&&!(n2&&n2.v)){i++;out+='尔'}}
+    let fin=FIN[t.v];const n=T[i+1],n2=T[i+2];if(n&&n.c==='ŋ'&&i+1===T.length-1){out+=syl('',fin)+'英';i++;continue}if(n&&n.c&&NAS[n.c]&&!(n2&&n2.v)){fin=NAS[n.c][fin]||fin;i++}out+=syl('',fin);if(n&&n.c==='r'&&!(n2&&n2.v)){i++;out+='尔'}}
   return out}
 // ---------- Chinese meaning ----------
 function cleanZh(list){const out=[];for(let m of list){if(!m)continue;m=m.replace(/(\S+) (\S+) \[[a-z0-9 ]*\]/,'$2').replace(/\[[^\]]*\]/g,' ').replace(/[a-zA-Z]+\./g,' ');
