@@ -278,7 +278,12 @@ function mapItems(arr){if(!Array.isArray(arr))arr=arr.entries||arr.words||[];
   const out=arr.filter(x=>x&&x.word&&String(x.word).trim()).map(x=>({word:String(x.word).trim(),pos:x.pos||'',meaning:x.meaning_zh||x.meaning||'',sentence:x.sentence_en||x.sentence||'',trans:x.sentence_zh||x.trans||'',hint:'',extra:'',filled:false,src:'import'}));
   if(!out.length)throw new Error('没有找到单词');return out}
 const PACK_RE=/^(?:PZ[:：]\s*)?([A-Za-z0-9_-]{1,32})$/i;
-async function fetchPack(id){const r=await fetch('packs/'+encodeURIComponent(id.toLowerCase())+'.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(`找不到词包「${id}」`);return mapItems(await r.json())}
+const PACK_NET_ERR='网络不稳，下载词包失败，请稍后重试';
+async function tget(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);try{return await fetch(u,{cache:'no-store',signal:c.signal})}finally{clearTimeout(t)}}
+async function fetchPack(id){const f=encodeURIComponent(id.toLowerCase())+'.json',q='?t='+Date.now(),gh='/gh/zhuyinghao123/cefr-words@main/vocab/packs/'+f;
+  const urls=['packs/'+f+q,'https://fastly.jsdelivr.net'+gh+q,'https://testingcf.jsdelivr.net'+gh+q,'https://cdn.jsdelivr.net'+gh+q];let n404=0;
+  for(const u of urls){try{const r=await tget(u,6000);if(r.status===404){n404++;continue}if(!r.ok)continue;const j=await r.json();return mapItems(j)}catch(e){}}
+  throw new Error(n404===urls.length?`找不到词包「${id}」`:PACK_NET_ERR)}
 async function parseImport(txt){txt=cleanTxt(txt);if(!txt)throw new Error('内容为空');
   const pk=txt.replace(/\s+/g,'').match(PACK_RE);if(pk&&!/^PZCK1/i.test(txt)&&txt.replace(/\s+/g,'').length<=35)return fetchPack(pk[1]);
   let d=txt;const m=txt.match(/#import=([\s\S]+)/);if(m)d=m[1];try{d=decodeURIComponent(d)}catch(e){}d=d.replace(/^\s*PZCK1\s*[:：]?/i,'').trim();
@@ -290,7 +295,7 @@ let impBusy=false;
 async function importItems(items,msg){if(impBusy)return;impBusy=true;setTimeout(()=>impBusy=false,1500);const before=allWords().length;const[ws,m]=addNew(items.map(x=>({...x,id:uid(),status:'new',v:2}))),n=ws.length;S.cur='__all';S.idx=Math.min(before,Math.max(0,allWords().length-1));save();
   toast(impMsg(n,m),3000);hist.length=0;renderLib();go('lib',false);
   for(const w of ws){try{await lite(w);if(!w.meaning)w.meaning=await Enrich.meaning(w.word.toLowerCase())}catch(e){}save()}prefetchAll();if(view==='study')renderStudy(false);if(view==='lib')renderLib();return ws.length}
-$('#pasteBtn').onclick=async()=>{if(impBusy)return;try{const items=await parseImport($('#pasteBox').value);$('#pasteBox').value='';await importItems(items)}catch(e){toast('无法识别：'+e.message,3500)}};
+$('#pasteBtn').onclick=async()=>{if(impBusy)return;try{const items=await parseImport($('#pasteBox').value);$('#pasteBox').value='';await importItems(items)}catch(e){toast(e.message===PACK_NET_ERR||/找不到词包/.test(e.message)?e.message:/Load failed|Failed to fetch|NetworkError|respondWith/i.test(e.message)?PACK_NET_ERR:'无法识别：'+e.message,3500)}};
 let hashDone='';async function hashImport(){if(!/#import=/.test(location.hash))return;const raw=location.hash;if(hashDone===raw||sessionStorage.getItem('imp:'+raw))return history.replaceState(null,'',location.pathname+location.search);hashDone=raw;try{sessionStorage.setItem('imp:'+raw,1)}catch(_){}history.replaceState(null,'',location.pathname+location.search);
   try{const items=await parseImport(raw);const code='PZCK1:'+raw.split('#import=')[1];await importItems(items);
     if(!navigator.standalone&&!matchMedia('(display-mode: standalone)').matches)sheet([['📋 复制导入代码（到主屏幕 App 里粘贴）',()=>{navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast('已复制，打开主屏幕 App → 拍照 → 粘贴导入'),()=>prompt('长按复制这段代码',code))}]],`<b>已导入 ${items.length} 个词</b>如果你平时用的是主屏幕上的「拍照词库」，它和 Safari 的数据是分开的。复制下面的代码，到主屏幕 App 的拍照页「粘贴导入链接/代码」里粘贴即可。`)}
@@ -335,7 +340,7 @@ function migrate(){
 // ================= service worker auto-update =================
 if('serviceWorker'in navigator){const had=!!navigator.serviceWorker.controller;let reloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!reloading){const t=+sessionStorage.getItem('swReload')||0;if(Date.now()-t<15000)return;sessionStorage.setItem('swReload',Date.now());reloading=true;location.reload()}});
-  navigator.serviceWorker.register('sw.js',{scope:'./'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})})}
+  navigator.serviceWorker.register('sw.js',{scope:'./'}).then(r=>{const up=()=>{try{const p=r.update();p&&p.catch&&p.catch(()=>{})}catch(_){}};up();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')up()})}).catch(()=>{})}
 
 $('#catName').onclick=()=>sheet([['全部单词（'+allWords().length+'）',()=>studyCat('__all')],...ordered().map(c=>[(c.parent?'　└ ':'')+esc(c.name)+'（'+count(c)+'）',()=>studyCat(c.id)])]);
 // study swipe: left=next, right=prev (no delete gesture here)
