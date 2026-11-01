@@ -25,7 +25,8 @@ function moveIn(arr,item,ni){arr.splice(arr.indexOf(item),1);arr.splice(ni,0,ite
 function lvBadge(w,cls='lv'){const l=Enrich.level(w.word||'');if(!l.lv)return'';const u='https://dictionary.cambridge.org/dictionary/english/'+encodeURIComponent(l.lemma||w.word);
   return `<a class="${cls}" href="${u}" target="_blank" rel="noopener" title="来源 ${esc(l.src||'')}，点开剑桥词典核对" onclick="event.stopPropagation()">${l.lv}</a><small class="lvsrc">${esc(l.src||'')} · 点等级看剑桥</small>`}
 // ================= audio =================
-const wordURL=w=>'https://dict.youdao.com/dictvoice?type=2&audio='+encodeURIComponent(w.trim());
+const YD_BAD=new Set(['human inhabitant']); // youdao dictvoice returns 500 for these → Google TTS (speech fallback still applies)
+const wordURL=w=>YD_BAD.has(w.trim().toLowerCase())?sentURL(w):'https://dict.youdao.com/dictvoice?type=2&audio='+encodeURIComponent(w.trim());
 const sentURL=s=>'https://translate.google.com/translate_tts?ie=UTF-8&tl=en-US&client=tw-ob&q='+encodeURIComponent(s.trim().slice(0,200));
 const pool=new Map();let unlocked=false,lastLatency=null;const player=new Audio();player.preload='auto';
 function getA(url){let a=pool.get(url);if(!a){a=new Audio();a.preload='auto';a.src=url;a.load();pool.set(url,a)}return a}

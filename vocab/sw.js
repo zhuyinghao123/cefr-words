@@ -1,4 +1,4 @@
-// build 4 (v5-24)
+// build 5 (v5-24)
 const V='vocab-v5-24',AUD='vocab-audio',DATA='vocab-data';
 const A=['./','index.html','app.css','app.js','parse.js','enrich.js','cefr.js','manifest.json','icon-192.png','icon-512.png','favicon.ico'];
 // install: cache each file independently so one failure can't abort the install
