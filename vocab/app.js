@@ -216,7 +216,7 @@ function editorHTML(w){return `<div class="two"><input class="w" data-k="word" p
 function bindEditor(d,w,live){d.querySelectorAll('[data-k]').forEach(i=>i.oninput=()=>{w[i.dataset.k]=i.value;if(i.dataset.k==='word'){d.querySelector('[data-lv]').innerHTML=lvBadge(w,'tag')}if(i.dataset.k==='sentence')w.filled=false;if(live)save()})}
 // ================= enrichment helpers =================
 async function lite(w,force){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip&&(force||!w.ipaUK&&!w.ipaUS)){w.ipaUK=ip.uk;w.ipaUS=ip.us}
-  if(!w.hint||/[A-Za-z]/.test(w.hint)||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=12}
+  if(!w.hint||/[A-Za-z]/.test(w.hint)||force&&w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK)||w.hint;if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=13}
 // ================= photo import =================
 let shots=[];
 $('#pickBtn').onclick=()=>$('#pick').click();$('#shootBtn').onclick=()=>$('#shoot').click();
@@ -326,8 +326,8 @@ function fixData(){S.lib=Array.isArray(S.lib)?S.lib:[];const L=S.cats.filter(c=>
 function migrate(){
   // v6: regenerate auto 谐音 locally for the user's own stored words only (no network, chunked so the UI never blocks)
   // v7: American defaults — refresh IPA (stress fixes/overrides, mostly from local cache) and regenerate auto 谐音 from US IPA; user's stored words only
-  const v5=allWords().filter(w=>(w.v===5||w.v===6||w.v===7||w.v===8||w.v===9||w.v===10||w.v===11)&&(w.ipaUK||w.ipaUS));if(v5.length)(async()=>{for(let i=0;i<v5.length;i++){const w=v5[i];try{const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}}catch(e){}try{if(!w.hint||/[A-Za-z]/.test(w.hint)||w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK)||w.hint}catch(e){}{const l=Enrich.level(w.word);if(l&&l.lv!==undefined){w.level=l.lv;w.levelSrc=l.src}}w.v=12;if(i%10===9){save();await new Promise(r=>setTimeout(r,0))}}save();if(view==='study')renderStudy(false)})();
-  const old=allWords().filter(w=>!w.v||w.v<5||w.v>=5&&w.v<12&&!w.ipaUK&&!w.ipaUS);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
+  const v5=allWords().filter(w=>(w.v===5||w.v===6||w.v===7||w.v===8||w.v===9||w.v===10||w.v===11||w.v===12)&&(w.ipaUK||w.ipaUS));if(v5.length)(async()=>{for(let i=0;i<v5.length;i++){const w=v5[i];try{const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}}catch(e){}try{if(!w.hint||/[A-Za-z]/.test(w.hint)||w.hintAuto!==false)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK)||w.hint}catch(e){}{const l=Enrich.level(w.word);if(l&&l.lv!==undefined){w.level=l.lv;w.levelSrc=l.src}}w.v=13;if(i%10===9){save();await new Promise(r=>setTimeout(r,0))}}save();if(view==='study')renderStudy(false)})();
+  const old=allWords().filter(w=>!w.v||w.v<5||w.v>=5&&w.v<13&&!w.ipaUK&&!w.ipaUS);if(old.length)(async()=>{for(const w of old){try{await lite(w,true)}catch(e){}save()}if(view==='study')renderStudy(false);if(view==='lib')renderLib()})();
   let need=[];S.cats.forEach(c=>c.words.forEach(w=>{if(!w.v){w.status=w.status||'new';w.ocrIpa=w.ipa;need.push(w)}}));
   if(need.length)(async()=>{for(const w of need){const ip=await Enrich.ipa(w.word.toLowerCase());if(ip){w.ipaUK=ip.uk;w.ipaUS=ip.us}if(!w.hint)w.hint=Enrich.xieyinW(w.word,w.ipaUS||w.ipaUK);if(w.sentence&&!w.trans)w.trans=await Enrich.translate(w.sentence);w.v=2;save()}if(view==='study')renderStudy(false)})()}
 // ================= boot =================
