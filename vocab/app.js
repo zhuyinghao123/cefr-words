@@ -281,7 +281,7 @@ const PACK_RE=/^(?:PZ[:：]\s*)?([A-Za-z0-9_-]{1,32})$/i;
 const PACK_NET_ERR='网络不稳，下载词包失败，请稍后重试';
 async function tget(u,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);try{return await fetch(u,{cache:'no-store',signal:c.signal})}finally{clearTimeout(t)}}
 async function fetchPack(id){const f=encodeURIComponent(id.toLowerCase())+'.json',q='?t='+Date.now(),gh='/gh/zhuyinghao123/cefr-words@main/vocab/packs/'+f;
-  const urls=['packs/'+f+q,'https://fastly.jsdelivr.net'+gh+q,'https://testingcf.jsdelivr.net'+gh+q,'https://cdn.jsdelivr.net'+gh+q];let n404=0;
+  const urls=['packs/'+f+q,'https://fastly.jsdelivr.net'+gh+q,'https://gcore.jsdelivr.net'+gh+q,'https://testingcf.jsdelivr.net'+gh+q,'https://cdn.jsdelivr.net'+gh+q];let n404=0;
   for(const u of urls){try{const r=await tget(u,6000);if(r.status===404){n404++;continue}if(!r.ok)continue;const j=await r.json();return mapItems(j)}catch(e){}}
   throw new Error(n404===urls.length?`找不到词包「${id}」`:PACK_NET_ERR)}
 async function parseImport(txt){txt=cleanTxt(txt);if(!txt)throw new Error('内容为空');
