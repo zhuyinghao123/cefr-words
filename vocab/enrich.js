@@ -64,7 +64,7 @@ function xieyin(ip){if(!ip)return'';let s=ip.normalize('NFD').replace(/n\u0329/g
     if(t.c==='r'&&i>0&&T[i-1].c&&T[i+1]&&T[i+1].v)t.c='l';
     if(t.c){const n=T[i+1];if(n&&n.v){const vt=n.v;let fin=FIN[vt];const after=T[i+2],aft2=T[i+3];
         if(after&&after.c&&NAS[after.c]&&!(aft2&&aft2.v)){fin=NAS[after.c][fin]||fin;i+=1}
-        out+=(t.c==='s'&&fin==='i'&&/^(ɪ|iː|i)$/.test(vt))?'西':syl(INI[t.c],fin);i+=1;if(after&&after.c==='r'&&!(aft2&&aft2.v)&&/[ɑɔɜə]/.test(vt))i+=1;}
+        out+=(t.c==='s'&&fin==='i'&&/^(ɪ|iː|i)$/.test(vt))?'西':syl(INI[t.c],fin);i+=1;if(after&&after.c==='r'&&!(aft2&&aft2.v)&&/[ɑɔɜə]/.test(vt)){i+=1;if(vt==='ə'&&i===T.length-1)out+='尔'}}
       else out+=SOLO[t.c]||'';continue}
     let fin=FIN[t.v];const n=T[i+1],n2=T[i+2];if(n&&n.c&&NAS[n.c]&&!(n2&&n2.v)){fin=NAS[n.c][fin]||fin;i++}out+=syl('',fin)}
   return out}
