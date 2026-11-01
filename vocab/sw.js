@@ -1,5 +1,5 @@
-// build 2 (US defaults)
-const V='vocab-v5-18',AUD='vocab-audio',DATA='vocab-data';
+// build 3 (v5-19)
+const V='vocab-v5-19',AUD='vocab-audio',DATA='vocab-data';
 const A=['./','index.html','app.css','app.js','parse.js','enrich.js','cefr.js','manifest.json','icon-192.png','icon-512.png','favicon.ico'];
 // install: cache each file independently so one failure can't abort the install
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>Promise.all(A.map(u=>c.add(new Request(u,{cache:'reload'})).catch(()=>{}))))) });
