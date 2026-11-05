@@ -147,7 +147,7 @@ $('#libMore').onclick=()=>sheet(commonMenu());
 // ================= library =================
 let COLL;try{COLL=new Set(JSON.parse(localStorage.getItem('vocab-collapsed')||'[]'))}catch(_){COLL=new Set()}
 const saveColl=()=>{try{localStorage.setItem('vocab-collapsed',JSON.stringify([...COLL]))}catch(_){}};
-function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered().filter(c=>!(c.parent&&COLL.has(c.parent)));
+function renderLib(){const L=$('#catList');pruneSel(dSelL,S.lib);L.innerHTML='';const all=ordered().filter(c=>!(c.parent&&COLL.has(c.parent)));
   
   all.forEach(c=>{const d=document.createElement('div');d.className='row'+(c.parent?' child':'')+(c.id===S.cur?' sel':'');d.dataset.id=c.id;
     const hk=!c.parent&&kids(c.id).length>0;d.innerHTML=`<span class="drag">☰</span><div class="t"><b>${hk?`<span class="chev" style="display:inline-block;width:1.1em;color:#888">${COLL.has(c.id)?'▸':'▾'}</span>`:''}${esc(c.name)}</b><small>${count(c)} 词</small></div>
@@ -155,13 +155,14 @@ function renderLib(){const L=$('#catList');L.innerHTML='';const all=ordered().fi
     d.querySelector('.t').onclick=ev=>{if(hk){ev.stopPropagation();COLL.has(c.id)?COLL.delete(c.id):COLL.add(c.id);saveColl();return renderLib()}S.cur=c.id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)};
     d.querySelectorAll('button').forEach(b=>b.onclick=()=>catAct(c,b.dataset.a));L.appendChild(d)});
   const OL=document.createElement('div');OL.id='outList';const ms=libSel!==null;
-  OL.innerHTML=S.lib.length?`<div class="olh"><span>未归类的单词</span><button class="olb" id="olMs">${ms?'取消':'多选'}</button></div>${ms?`<div class="olact"><button class="pb" id="olAll">全选</button><button class="pb${libAct==='del'?' r':''}" id="olDel">删除</button><button class="pb${libAct==='move'?' r':''}" id="olMove">加入分类</button><span class="muted">已选 ${libSel.size}，点右上 ✓ 确认</span></div>`:''}<ul class="ol">${S.lib.map(w=>`<li data-w="${w.id}">${ms?`<span class="chk${libSel.has(w.id)?' on':''}">✓</span>`:''}<div class="sw"><b>${esc(w.word)}</b> <span>${esc(w.pos||'')} ${esc(w.meaning||'')}</span></div><button class="swdel">删除</button></li>`).join('')}</ul>`:'';
+  OL.innerHTML=S.lib.length?`<div class="olh"><span>未归类的单词</span><button class="olb" id="olMs">${ms?'取消':'多选'}</button></div>${ms?`<div class="olact"><button class="pb" id="olAll">全选</button><button class="pb${libAct==='del'?' r':''}" id="olDel">删除</button><button class="pb${libAct==='move'?' r':''}" id="olMove">加入分类</button><span class="muted">已选 ${libSel.size}，点右上 ✓ 确认</span></div>`:''}${ms?'':selHead(S.lib,dSelL,'olSA')}<ul class="ol">${S.lib.map(w=>`<li data-w="${w.id}">${ms?`<span class="chk${libSel.has(w.id)?' on':''}">✓</span>`:`<span class="chk dchk${dSelL.has(w.id)?' on':''}">✓</span>`}<div class="sw"><b>${esc(w.word)}</b> <span>${esc(w.pos||'')} ${esc(w.meaning||'')}</span></div><button class="swdel">删除</button></li>`).join('')}</ul>${ms?'':delBtn(dSelL,'olDS')}`:'';
   L.appendChild(OL);$('#libOkWrap').innerHTML=ms?'<button class="ok" id="libOk">✓</button>':'';if(ms)$('#libOk').onclick=libFinish;
   const q=s=>OL.querySelector(s);if(q('#olMs'))q('#olMs').onclick=()=>{libSel=ms?null:new Set();libAct='del';renderLib()};
   if(ms){q('#olAll').onclick=()=>{libSel=libSel.size===S.lib.length?new Set():new Set(S.lib.map(w=>w.id));renderLib()};q('#olDel').onclick=()=>{libAct='del';renderLib()};q('#olMove').onclick=()=>{libAct='move';renderLib()}}
   OL.querySelectorAll('li').forEach(li=>{const id=li.dataset.w;swipe(li,()=>delWords(S.lib,[id]));li.querySelector('.swdel').onclick=ev=>{ev.stopPropagation();delWords(null,[id])};
     li.querySelector('.sw').onclick=()=>{if(li.classList.contains('open'))return li.classList.remove('open');if(ms){libSel.has(id)?libSel.delete(id):libSel.add(id);return renderLib()}const k=S.lib.findIndex(w=>w.id===id);if(k<0)return;S.cur='__all';S.idx=k;save();hist.length=0;go('study',false);renderStudy(true)};
-    if(ms)li.querySelector('.chk').onclick=li.querySelector('.sw').onclick});
+    if(ms)li.querySelector('.chk').onclick=li.querySelector('.sw').onclick;else li.querySelector('.dchk').onclick=ev=>{ev.stopPropagation();dSelL.has(id)?dSelL.delete(id):dSelL.add(id);renderLib()}});
+  if(!ms)bindSel(OL,S.lib,dSelL,'olSA','olDS',renderLib);
   enableDrag(L,(from,to)=>{const a=cat(from),b=cat(to);if(!a||!b||a.lib||b.lib||(a.parent||null)!==(b.parent||null))return toast('只能在同级内拖动');moveIn(S.cats,a,S.cats.indexOf(b));save();renderLib()})}
 function studyCat(id){S.cur=id;S.idx=0;save();hist.length=0;go('study',false);renderStudy(true)}
 function catAct(c,a){if(a==='study')return studyCat(c.id);
@@ -179,28 +180,36 @@ function enableDrag(list,done){list.querySelectorAll('.drag').forEach(h=>{h.onpo
 function catOptions(sel){sel.innerHTML='<option value="__lib">不分类（放在外面）</option>'+ordered().map(c=>`<option value="${c.id}">${c.parent?'　└ ':''}${esc(c.name)}</option>`).join('');sel.value=cat(S.cur)?S.cur:'__lib'}
 // ================= words of a category =================
 let libSel=null,libAct='del';
+// always-visible multi-select delete (v5-30)
+const dSelL=new Set(),dSelW=new Set();
+function pruneSel(set,list){const ok=new Set(list.map(w=>w.id));[...set].forEach(i=>ok.has(i)||set.delete(i))}
+function selHead(list,set,id){if(!list.length)return'';const all=list.every(w=>set.has(w.id));return `<div class="selhd" id="${id}"><span class="chk${all?' on':''}">✓</span><span>全选</span></div>`}
+function delBtn(set,id){return set.size?`<button class="delsel" id="${id}">删除选中（${set.size}）</button>`:''}
+function bindSel(root,list,set,hid,bid,re){const h=root.querySelector('#'+hid);if(h)h.onclick=()=>{const all=list.every(w=>set.has(w.id));if(all)set.clear();else list.forEach(w=>set.add(w.id));re()};
+  const b=root.querySelector('#'+bid);if(b)b.onclick=()=>{if(delWords(null,[...set])){set.clear();re()}}}
 function swipe(el,_){let x0=null,y0=0,x1=0,y1=0;const fin=()=>{if(x0===null)return;const dx=x1-x0,dy=y1-y0;x0=null;if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5){document.querySelectorAll('.open').forEach(o=>o!==el&&o.classList.remove('open'));el.classList.toggle('open',dx<0)}};el.addEventListener('touchstart',e=>{x0=x1=e.touches[0].clientX;y0=y1=e.touches[0].clientY},{passive:true});el.addEventListener('touchmove',e=>{x1=e.touches[0].clientX;y1=e.touches[0].clientY},{passive:true});el.addEventListener('touchend',e=>{if(e.changedTouches[0]){x1=e.changedTouches[0].clientX;y1=e.changedTouches[0].clientY}fin()},{passive:true});el.addEventListener('touchcancel',fin,{passive:true})}
 function delWords(_,ids){const set=new Set(ids);if(!confirm(`删除 ${set.size} 个单词？`))return false;S.lib=S.lib.filter(w=>!set.has(w.id));S.cats.forEach(c=>c.words=c.words.filter(w=>!set.has(w.id)));S.idx=0;save();if(view==='words')renderWords();renderLib();toast(`已删除 ${set.size} 个单词`);return true}
 function libFinish(){if(!libSel.size){libSel=null;return renderLib()}const ids=[...libSel];
   if(libAct==='del'){if(delWords(null,ids))libSel=null;return renderLib()}
   const targets=ordered();if(!targets.length)return toast('请先新建分类');sheet(targets.map(t=>[(t.parent?'　└ ':'')+esc(t.name),()=>{const mv=S.lib.filter(w=>libSel.has(w.id));S.lib=S.lib.filter(w=>!libSel.has(w.id));t.words.push(...mv);libSel=null;save();renderLib();toast(`已把 ${mv.length} 个词加入「${t.name}」`)}]),'<b>加入到哪个分类？</b>')}
 let wCat=null,wMode=null,wSel=new Set();
-function openWords(id){wCat=id;wMode=null;wSel.clear();renderWords();go('words')}
-function renderWords(){const c=cat(wCat);if(!c)return;$('#wTitle').textContent=c.lib?'未归类的单词':c.name;const L=$('#wList');$('#wAddMode').style.display=c.lib?'none':'';$('#wOutMode').style.display=c.lib?'none':'';$('#wAddMode').classList.toggle('r',wMode==='add');$('#wOutMode').classList.toggle('r',wMode==='out');
+function openWords(id){wCat=id;dSelW.clear();wMode=null;wSel.clear();renderWords();go('words')}
+function renderWords(){const c=cat(wCat);if(!c)return;pruneSel(dSelW,c.words);$('#wTitle').textContent=c.lib?'未归类的单词':c.name;const L=$('#wList');$('#wAddMode').style.display=c.lib?'none':'';$('#wOutMode').style.display=c.lib?'none':'';$('#wAddMode').classList.toggle('r',wMode==='add');$('#wOutMode').classList.toggle('r',wMode==='out');
   const list=wMode==='add'?S.lib:c.words;L.innerHTML=wMode==='add'?'<p class="muted">只列出外面（未归类）的单词；已在其他分类里的单词不能选。</p>'+(S.lib.length?'':'<p class="muted">外面没有未归类的单词</p>'):(c.words.length?'':(c.lib?'<p class="muted">导入的单词会放在这里。点「多选加入分类」把它们放进分类，放进去后就不再显示在外面。</p>':'<p class="muted">这个分类自身没有单词（子类单词请到子类里管理）</p>'));
   $('#wOkWrap').innerHTML=wMode?'<button class="ok" id="wOk">✓</button>':'';if(wMode)$('#wOk').onclick=wFinish;
   $('#wDelMode').classList.toggle('r',wMode==='del');$('#wMoveMode').classList.toggle('r',wMode==='move');$('#wEditMode').classList.toggle('r',wMode==='edit');
   list.forEach((w,i)=>{if(wMode==='edit'){const d=document.createElement('div');d.className='ecard';d.innerHTML=`<div class="f">${editorHTML(w)}</div>`;L.appendChild(d);bindEditor(d,w,true);return}
     const d=document.createElement('div');d.className='row'+(wSel.has(w.id)?' sel':'');d.dataset.id=w.id;
-    d.innerHTML=`${wMode&&wMode!=='edit'?`<span class="chk${wSel.has(w.id)?' on':''}">✓</span>`:'<span class="drag">☰</span>'}<div class="t"><b>${esc(w.word)}</b> ${lvBadge(w,'tag')}<div class="sub">${esc(w.pos)} ${esc(w.meaning)}${w.hint?'　谐音 '+esc(w.hint):''}</div></div>${wMode?'':'<button class="mini" data-a="-1">↑</button><button class="mini" data-a="1">↓</button>'}`;
-    if(!wMode){d.insertAdjacentHTML('beforeend','<button class="swdel">删除</button>');swipe(d);d.querySelector('.swdel').onclick=ev=>{ev.stopPropagation();delWords(null,[w.id])}}
+    d.innerHTML=`${wMode&&wMode!=='edit'?`<span class="chk${wSel.has(w.id)?' on':''}">✓</span>`:`<span class="chk dchk${dSelW.has(w.id)?' on':''}">✓</span><span class="drag">☰</span>`}<div class="t"><b>${esc(w.word)}</b> ${lvBadge(w,'tag')}<div class="sub">${esc(w.pos)} ${esc(w.meaning)}${w.hint?'　谐音 '+esc(w.hint):''}</div></div>${wMode?'':'<button class="mini" data-a="-1">↑</button><button class="mini" data-a="1">↓</button>'}`;
+    if(!wMode){d.querySelector('.dchk').onclick=ev=>{ev.stopPropagation();dSelW.has(w.id)?dSelW.delete(w.id):dSelW.add(w.id);renderWords()};d.insertAdjacentHTML('beforeend','<button class="swdel">删除</button>');swipe(d);d.querySelector('.swdel').onclick=ev=>{ev.stopPropagation();delWords(null,[w.id])}}
     if(wMode&&wMode!=='edit')d.onclick=()=>{wSel.has(w.id)?wSel.delete(w.id):wSel.add(w.id);renderWords()};
     d.querySelectorAll('button.mini').forEach(b=>b.onclick=()=>{const j=i+ +b.dataset.a;if(j<0||j>=c.words.length)return;moveIn(c.words,w,j);save();renderWords()});L.appendChild(d)});
+  if(!wMode&&c.words.length){L.insertAdjacentHTML('afterbegin',selHead(c.words,dSelW,'wSA'));L.insertAdjacentHTML('beforeend',delBtn(dSelW,'wDS'));bindSel(L,c.words,dSelW,'wSA','wDS',renderWords)}
   if(!wMode)enableDrag(L,(f,t)=>{const a=c.words.find(x=>x.id===f),b=c.words.find(x=>x.id===t);moveIn(c.words,a,c.words.indexOf(b));save();renderWords()})}
 $('#wMoveMode').onclick=()=>{wMode=wMode==='move'?null:'move';wSel.clear();renderWords()};
 $('#wAddMode').onclick=()=>{wMode=wMode==='add'?null:'add';wSel.clear();renderWords()};
 $('#wOutMode').onclick=()=>{wMode=wMode==='out'?null:'out';wSel.clear();renderWords()};
-$('#wDelMode').onclick=()=>{wMode=wMode==='del'?null:'del';wSel.clear();renderWords()};
+$('#wDelMode').onclick=()=>{wMode=null;wSel.clear();const c=cat(wCat);if(c){const all=c.words.length&&c.words.every(w=>dSelW.has(w.id));if(all)dSelW.clear();else c.words.forEach(w=>dSelW.add(w.id))}renderWords()};
 $('#wEditMode').onclick=()=>{wMode=wMode==='edit'?null:'edit';renderWords()};
 $('#wFix').onclick=async()=>{const c=cat(wCat);toast('正在补全…',60000);for(const w of c.words)await lite(w,true);save();renderWords();toast('已补全音标、谐音和等级')};
 function wFinish(){const c=cat(wCat);if(wMode==='move'&&wSel.size){const targets=ordered().filter(x=>x.id!==c.id);if(!targets.length)return toast('请先在词库新建分类');
